@@ -341,30 +341,60 @@ else:
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        # Detailed score table
+        # Detailed score table — mobile friendly HTML table
         st.markdown("### Detailed Score Table")
-        header_cols = st.columns([2.5,1,1,1,1,1,1.2])
-        headers = ["Address","Demand","Footfall","Competition",
-                   "Accessibility","Catchment","Total"]
-        for col, h in zip(header_cols, headers):
-            col.markdown(f"**{h}**")
-        st.markdown("<hr style='margin:4px 0'>", unsafe_allow_html=True)
 
+        def score_color(s):
+            return "#1D9E75" if s >= 65 else "#BA7517" if s >= 45 else "#C0392B"
+
+        rows_html = ""
         for i, r in enumerate(results):
-            row_cols = st.columns([2.5,1,1,1,1,1,1.2])
-            vc = rank_colors[i] if i < 3 else "#888"
-            row_cols[0].markdown(
-                f"{rank_emoji[i]} {r['address'].split(',')[0]}")
-            for j, key in enumerate(score_keys):
-                s  = r["scores"][key]
-                c  = "#1D9E75" if s>=65 else "#BA7517" if s>=45 else "#C0392B"
-                row_cols[j+1].markdown(
-                    f"<span style='color:{c};font-weight:600'>{s}</span>",
-                    unsafe_allow_html=True)
-            row_cols[6].markdown(
-                f"<span style='color:{vc};font-weight:700;font-size:16px'>"
-                f"{r['total_score']}</span>",
-                unsafe_allow_html=True)
+            vc   = rank_colors[i] if i < 3 else "#888"
+            name = r["address"].split(",")[0]
+            rows_html += f"""
+            <tr>
+              <td>
+                <span style='font-size:16px'>{rank_emoji[i]}</span>
+                <span style='font-weight:600;color:white'> {name}</span>
+              </td>
+              <td style='color:{score_color(r["scores"]["demand"])};font-weight:600'>
+                {r["scores"]["demand"]}</td>
+              <td style='color:{score_color(r["scores"]["footfall"])};font-weight:600'>
+                {r["scores"]["footfall"]}</td>
+              <td style='color:{score_color(r["scores"]["competition"])};font-weight:600'>
+                {r["scores"]["competition"]}</td>
+              <td style='color:{score_color(r["scores"]["accessibility"])};font-weight:600'>
+                {r["scores"]["accessibility"]}</td>
+              <td style='color:{score_color(r["scores"]["catchment"])};font-weight:600'>
+                {r["scores"]["catchment"]}</td>
+              <td style='color:{vc};font-weight:700;font-size:17px'>
+                {r["total_score"]}</td>
+            </tr>"""
+
+        st.markdown(f"""
+        <div style='overflow-x:auto;-webkit-overflow-scrolling:touch;
+                    border-radius:10px;border:1px solid #333'>
+          <table style='width:100%;border-collapse:collapse;
+                        background:#111;font-size:13px;
+                        white-space:nowrap'>
+            <thead>
+              <tr style='background:#0A2E26;color:#9ecfc0;font-size:11px;
+                        letter-spacing:0.5px'>
+                <th style='padding:12px 14px;text-align:left'>ADDRESS</th>
+                <th style='padding:12px 10px;text-align:center'>DEMAND</th>
+                <th style='padding:12px 10px;text-align:center'>FOOTFALL</th>
+                <th style='padding:12px 10px;text-align:center'>COMPETITION</th>
+                <th style='padding:12px 10px;text-align:center'>ACCESS</th>
+                <th style='padding:12px 10px;text-align:center'>CATCHMENT</th>
+                <th style='padding:12px 10px;text-align:center'>TOTAL</th>
+              </tr>
+            </thead>
+            <tbody style='color:white'>
+              {rows_html}
+            </tbody>
+          </table>
+        </div>
+        """, unsafe_allow_html=True)
 
         # Multi-site map
         st.markdown("### All Sites on Map")
