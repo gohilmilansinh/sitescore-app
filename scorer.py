@@ -1,8 +1,9 @@
 import osmnx as ox
 import googlemaps
 import json
+import os
 
-GOOGLE_API_KEY = "AIzaSyDQZffF7r1c3ToxK9bsr9euKaJ4kOzjTm0"
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY","")
 gmaps = googlemaps.Client(key=GOOGLE_API_KEY)
 
 WEIGHTS = {
