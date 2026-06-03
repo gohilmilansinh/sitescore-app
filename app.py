@@ -6,6 +6,7 @@ from scorer import score_site
 from report import generate_report
 import time
 import io
+import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="SiteScore — Retail Site Intelligence",
@@ -342,6 +343,7 @@ else:
         st.plotly_chart(fig, use_container_width=True)
 
         # Detailed score table — mobile friendly HTML table
+
         st.markdown("### Detailed Score Table")
 
         def score_color(s):
@@ -353,48 +355,73 @@ else:
             name = r["address"].split(",")[0]
             rows_html += f"""
             <tr>
-              <td>
-                <span style='font-size:16px'>{rank_emoji[i]}</span>
+              <td style='padding:12px 14px;text-align:left;border-bottom:1px solid #222'>
+                <span style='font-size:15px'>{rank_emoji[i]}</span>
                 <span style='font-weight:600;color:white'> {name}</span>
               </td>
-              <td style='color:{score_color(r["scores"]["demand"])};font-weight:600'>
+              <td style='padding:12px 10px;text-align:center;border-bottom:1px solid #222;
+                        color:{score_color(r["scores"]["demand"])};font-weight:600'>
                 {r["scores"]["demand"]}</td>
-              <td style='color:{score_color(r["scores"]["footfall"])};font-weight:600'>
+              <td style='padding:12px 10px;text-align:center;border-bottom:1px solid #222;
+                        color:{score_color(r["scores"]["footfall"])};font-weight:600'>
                 {r["scores"]["footfall"]}</td>
-              <td style='color:{score_color(r["scores"]["competition"])};font-weight:600'>
+              <td style='padding:12px 10px;text-align:center;border-bottom:1px solid #222;
+                        color:{score_color(r["scores"]["competition"])};font-weight:600'>
                 {r["scores"]["competition"]}</td>
-              <td style='color:{score_color(r["scores"]["accessibility"])};font-weight:600'>
+              <td style='padding:12px 10px;text-align:center;border-bottom:1px solid #222;
+                        color:{score_color(r["scores"]["accessibility"])};font-weight:600'>
                 {r["scores"]["accessibility"]}</td>
-              <td style='color:{score_color(r["scores"]["catchment"])};font-weight:600'>
+              <td style='padding:12px 10px;text-align:center;border-bottom:1px solid #222;
+                        color:{score_color(r["scores"]["catchment"])};font-weight:600'>
                 {r["scores"]["catchment"]}</td>
-              <td style='color:{vc};font-weight:700;font-size:17px'>
+              <td style='padding:12px 10px;text-align:center;border-bottom:1px solid #222;
+                        color:{vc};font-weight:700;font-size:17px'>
                 {r["total_score"]}</td>
             </tr>"""
 
-        st.markdown(f"""
-        <div style='overflow-x:auto;-webkit-overflow-scrolling:touch;
-                    border-radius:10px;border:1px solid #333'>
-          <table style='width:100%;border-collapse:collapse;
-                        background:#111;font-size:13px;
-                        white-space:nowrap'>
-            <thead>
-              <tr style='background:#0A2E26;color:#9ecfc0;font-size:11px;
-                        letter-spacing:0.5px'>
-                <th style='padding:12px 14px;text-align:left'>ADDRESS</th>
-                <th style='padding:12px 10px;text-align:center'>DEMAND</th>
-                <th style='padding:12px 10px;text-align:center'>FOOTFALL</th>
-                <th style='padding:12px 10px;text-align:center'>COMPETITION</th>
-                <th style='padding:12px 10px;text-align:center'>ACCESS</th>
-                <th style='padding:12px 10px;text-align:center'>CATCHMENT</th>
-                <th style='padding:12px 10px;text-align:center'>TOTAL</th>
-              </tr>
-            </thead>
-            <tbody style='color:white'>
-              {rows_html}
-            </tbody>
-          </table>
-        </div>
-        """, unsafe_allow_html=True)
+        table_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          body {{ margin:0; padding:0; background:transparent; }}
+          .wrap {{ overflow-x:auto; -webkit-overflow-scrolling:touch;
+                  border-radius:10px; border:1px solid #333; }}
+          table {{ width:100%; border-collapse:collapse;
+                  background:#111; font-size:13px;
+                  white-space:nowrap; font-family:sans-serif; }}
+          thead tr {{ background:#0A2E26; }}
+          th {{ padding:12px 10px; text-align:center;
+                color:#9ecfc0; font-size:11px; letter-spacing:0.5px;
+                font-weight:600; }}
+          th:first-child {{ text-align:left; padding-left:14px; }}
+        </style>
+        </head>
+        <body>
+          <div class="wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ADDRESS</th>
+                  <th>DEMAND</th>
+                  <th>FOOTFALL</th>
+                  <th>COMPETITION</th>
+                  <th>ACCESS</th>
+                  <th>CATCHMENT</th>
+                  <th>TOTAL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows_html}
+              </tbody>
+            </table>
+          </div>
+        </body>
+        </html>
+        """
+
+        components.html(table_html, height=40 + len(results) * 56)
 
         # Multi-site map
         st.markdown("### All Sites on Map")
