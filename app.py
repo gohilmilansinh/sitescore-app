@@ -196,11 +196,13 @@ if mode == "Single Site":
                       margin-top:2px'>{label}</div>
         </div>"""
 
-    st.markdown(f"""
-    <div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px'>
+    import streamlit.components.v1 as components
+    components.html(f"""
+    <div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;
+                font-family:sans-serif'>
       {pills}
     </div>
-    """, unsafe_allow_html=True)
+    """, height=80)
 
     # ── Row 3: Radar chart with side margins ─────────────
     st.markdown("### Score Breakdown")
@@ -235,8 +237,7 @@ if mode == "Single Site":
             showlegend=False,
             height=380,
             margin=dict(l=60, r=60, t=40, b=40),
-            paper_bgcolor="transparent",
-            plot_bgcolor="transparent"
+            paper_bgcolor="rgba(0,0,0,0)"   # transparent, valid for polar
         )
         st.plotly_chart(fig, use_container_width=True)
 
