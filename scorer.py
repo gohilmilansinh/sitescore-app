@@ -69,62 +69,48 @@ BRAND_KEYWORDS = {
 
 def score_competition(lat, lng, brand_type="restaurant"):
     keyword = BRAND_KEYWORDS.get(brand_type, BRAND_KEYWORDS["restaurant"])
-    
-    result = gmaps.places_nearby(
-        location=(lat, lng),
-        radius=500,
-        keyword=keyword,
-        type=brand_type if brand_type != "school" else "school"
-    )
-    
-    places = result.get("results", [])
-    
+
+    try:
+        result = gmaps.places_nearby(
+            location=(lat, lng),
+            radius=500,
+            keyword=keyword,
+            type=brand_type if brand_type != "school" else "school"
+        )
+        places = result.get("results", [])
+    except:
+        return 50.0, []  # safe fallback
+
     if not places:
-        return 100.0  # no competitors = perfect score
-    
-    # Calculate weighted competitor pressure
-    # A place with 1000+ reviews = 1.0 (strong competitor)
-    # A place with 100 reviews  = 0.3 (moderate competitor)
-    # A place with 10 reviews   = 0.1 (weak competitor)
-    weighted_pressure = 0
+        return 100.0, []  # always return tuple, even when empty
+
+    import math
+    weighted_pressure  = 0
     competitor_details = []
 
     for place in places:
-        review_count  = place.get("user_ratings_total", 0)
-        rating        = place.get("rating", 3.0)
-        name          = place.get("name", "Unknown")
+        review_count = place.get("user_ratings_total", 0)
+        rating       = place.get("rating", 3.0)
+        name         = place.get("name", "Unknown")
 
-        # Review count weight: logarithmic scale
-        # log10(1000) = 3.0 → weight 1.0 (capped)
-        # log10(100)  = 2.0 → weight 0.67
-        # log10(10)   = 1.0 → weight 0.33
-        # log10(1)    = 0   → weight 0.0
-        import math
         if review_count > 0:
             review_weight = min(math.log10(review_count) / 3.0, 1.0)
         else:
-            review_weight = 0.05  # exists but unreviewed
+            review_weight = 0.05
 
-        # Rating weight: higher rated = stronger competitor
-        # Scale 1–5 → 0.2–1.0
         rating_weight = rating / 5.0
-
-        # Combined competitor strength
-        strength = review_weight * 0.7 + rating_weight * 0.3
+        strength      = review_weight * 0.7 + rating_weight * 0.3
 
         weighted_pressure += strength
         competitor_details.append({
-            "name":    name,
-            "reviews": review_count,
-            "rating":  rating,
+            "name":     name,
+            "reviews":  review_count,
+            "rating":   rating,
             "strength": round(strength, 2)
         })
 
-    # Normalize: 10 full-strength competitors = score 0
-    # Score = how much white space remains
     score = max(100 - (weighted_pressure / 10 * 100), 0)
-
-    return round(score, 1), competitor_details
+    return round(score, 1), competitor_details  # always a tuple
 
 def score_accessibility(lat, lng):
     try:
