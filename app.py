@@ -107,18 +107,22 @@ if mode == "Single Site":
                 result = score_site(address.strip(), brand_type)
 
             if not result:
+                st.session_state.result = None
                 st.error("Something went wrong. Please try again.")
             elif "error" in result:
+                st.session_state.result = None
                 st.error(result["error"])
             else:
                 st.session_state.result = result
-                st.session_state.result_address = address.strip()
         else:
             st.warning("Please enter an address first.")
 
-    if st.session_state.result:
-        result       = st.session_state.result
-        scores       = result["scores"]
+    if st.session_state.result and "error" not in st.session_state.result:
+        result  = st.session_state.result
+        scores  = result.get("scores", {})
+        if not scores:
+            st.error("Result data is incomplete. Please score again.")
+            st.stop()
         total        = result["total_score"]
         verdict      = result["verdict"]
         lat, lng     = result["lat"], result["lng"]
