@@ -11,27 +11,20 @@ SUPPORTED_CITIES = [
 ]
 
 def validate_address(address):
-    """
-    Checks if address is likely in Gujarat.
-    Returns (is_valid, message)
-    """
-    address_lower = address.lower()
+    address_lower = address.strip().lower()
 
-    # Check if any Gujarat city or state name is mentioned
-    is_gujarat = any(city in address_lower for city in SUPPORTED_CITIES)
-
-    if not is_gujarat:
+    if len(address.strip()) < 6:
         return False, (
-            "Address doesn't appear to be in Gujarat. "
-            "Please add a city name like 'Ahmedabad', 'Surat', "
-            "'Vadodara', or 'Rajkot' to your address."
+            "Address too short. Please provide a specific area "
+            "and city name — e.g. 'Bopal, Ahmedabad, Gujarat'."
         )
 
-    # Check minimum length
-    if len(address.strip()) < 10:
+    is_gujarat = any(city in address_lower for city in SUPPORTED_CITIES)
+    if not is_gujarat:
         return False, (
-            "Address too short. Please provide a more specific "
-            "address including area and city."
+            "This address does not appear to be in Gujarat. "
+            "SiteScore currently covers Ahmedabad, Surat, Vadodara, "
+            "and Rajkot only. Please include your city name."
         )
 
     return True, "Valid"
@@ -39,23 +32,33 @@ def validate_address(address):
 
 def geocode(address):
     try:
-        result = gmaps.geocode(address)
+        result = gmaps.geocode(address + ", Gujarat, India")
         if not result:
             return None, None
 
-        # Verify result is actually in Gujarat
+        # Check every address component for Gujarat
+        found_gujarat = False
         components = result[0].get("address_components", [])
-        state = ""
         for comp in components:
-            if "administrative_area_level_1" in comp["types"]:
-                state = comp["long_name"].lower()
+            types = comp.get("types", [])
+            name  = comp.get("long_name", "").lower()
+            if "administrative_area_level_1" in types:
+                if "gujarat" in name:
+                    found_gujarat = True
+                else:
+                    # Google returned a result outside Gujarat
+                    return None, None
 
-        if "gujarat" not in state:
+        # Also check formatted address as backup
+        formatted = result[0].get("formatted_address", "").lower()
+        if not found_gujarat and "gujarat" not in formatted:
             return None, None
 
         loc = result[0]["geometry"]["location"]
         return loc["lat"], loc["lng"]
-    except:
+
+    except Exception as e:
+        print(f"Geocode error: {e}")
         return None, None
 
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY","")
@@ -247,9 +250,10 @@ def score_site(address, brand_type="restaurant"):
     lat, lng = geocode(address)
     if not lat:
         return {"error": (
-            "Could not find this address on the map. "
-            "Try being more specific — include area name, "
-            "city, and state (e.g. 'Bopal, Ahmedabad, Gujarat')."
+            "Could not find this address in Gujarat. "
+            "Make sure you include the area name and city — "
+            "e.g. 'Bopal, Ahmedabad, Gujarat'. "
+            "If the address is correct, try adding more detail."
         )}
 
     demand_score,      demand_count       = score_demand(lat, lng)
