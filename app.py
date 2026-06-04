@@ -213,6 +213,65 @@ if mode == "Single Site":
                 "<div class='ok-box'>No significant risk flags at this location</div>",
                 unsafe_allow_html=True)
 
+        # ── Explainability panel ──────────────────────────────────
+        st.markdown("### What we found")
+
+        raw = result.get("raw", {})
+
+        def explain_row(icon, label, value, context):
+            st.markdown(f"""
+            <div style='display:flex;align-items:flex-start;gap:14px;
+                        padding:12px 16px;border-radius:8px;margin-bottom:6px;
+                        border:1px solid #2a2a2a;background:#111'>
+              <div style='font-size:22px;min-width:32px'>{icon}</div>
+              <div style='flex:1'>
+                <div style='font-size:12px;color:#888;margin-bottom:2px'>{label}</div>
+                <div style='font-size:18px;font-weight:700;color:white'>{value}</div>
+                <div style='font-size:11px;color:#666;margin-top:2px'>{context}</div>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        explain_row(
+            "[B]",
+            "Residential buildings within 1km",
+            f"{raw.get('demand_buildings', 0):,}",
+            "Counted from OpenStreetMap. 200+ buildings = demand score 100."
+        )
+
+        anchors      = raw.get("footfall_anchors", {})
+        anchor_list  = ", ".join(
+            f"{k.replace('_',' ')} ({v})"
+            for k, v in anchors.items()
+        ) if anchors else "None found within 500m"
+        explain_row(
+            "[F]",
+            "Footfall anchor stores within 500m",
+            f"{sum(anchors.values()) if anchors else 0} anchors",
+            anchor_list
+        )
+
+        explain_row(
+            "[C]",
+            "Competitors found within 500m",
+            f"{raw.get('competitor_count', 0)} places",
+            "Weighted by review count and rating — strong brands count more than unreviewed local shops."
+        )
+
+        explain_row(
+            "[R]",
+            "Road intersections within 300m",
+            f"{raw.get('intersections', 0)} intersections",
+            f"Total road nodes in network: {raw.get('road_nodes', 0)}. More intersections = better connectivity."
+        )
+
+        explain_row(
+            "[S]",
+            "Commercial places within 1km",
+            f"{raw.get('catchment_places', 0)} places",
+            "Cafes, restaurants, shops counted via Google Places. Indicates commercial activity level."
+        )
+
         # Competitor breakdown
         if result.get("competitor_details"):
             st.markdown("### Nearby Competitors")
