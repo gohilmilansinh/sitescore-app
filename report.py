@@ -234,17 +234,45 @@ def generate_report(result, output_path="site_report.pdf"):
     # After the demand/footfall kv_table, add:
     spending_data = result.get("raw", {}).get("spending_data", {})
     avg_price     = spending_data.get("avg_price_level")
+    distribution  = spending_data.get("distribution", {})
+    sample_size   = spending_data.get("sample_size", 0)
+
+    y = section_header(y, "Spending Power Analysis")
+
+    kv_rows = [
+        ("Spending power score", f"{scores.get('spending_power', 50)} / 100"),
+        ("Data source",          "Google Places price levels within 1km"),
+        ("Places sampled",       str(sample_size)),
+    ]
 
     if avg_price:
-        section_header("Spending Power Analysis")
-        kv_table([
-            ("Spending power score",   f"{scores.get('spending_power', 50)} / 100"),
-            ("Average price level",    f"{avg_price} / 4.0"),
-            ("Places sampled",         str(spending_data.get('sample_size', 0))),
-            ("Budget places (0-1)",    str(spending_data.get('distribution',{}).get('budget (0-1)',0))),
-            ("Moderate places (2)",    str(spending_data.get('distribution',{}).get('moderate (2)',0))),
-            ("Premium places (3-4)",   str(spending_data.get('distribution',{}).get('premium (3-4)',0))),
-        ])
+        kv_rows += [
+            ("Average price level",   f"{avg_price} / 4.0"),
+            ("Budget places (0-1)",   str(distribution.get('budget (0-1)', 0))),
+            ("Moderate places (2)",   str(distribution.get('moderate (2)', 0))),
+            ("Premium places (3-4)",  str(distribution.get('premium (3-4)', 0))),
+        ]
+    else:
+        kv_rows.append(
+            ("Note", "Insufficient price data in this area — score defaulted to 50")
+        )
+
+    kv_table(kv_rows)
+
+    spending_txt = (
+        "High spending power area. Nearby places are predominantly "
+        "moderate to premium priced, indicating strong consumer "
+        "purchasing capacity. Suitable for premium brand positioning."
+        if scores.get("spending_power", 50) >= 65 else
+        "Moderate spending power. Mix of budget and mid-range places "
+        "nearby. Value-for-money positioning will outperform premium "
+        "pricing in this catchment."
+        if scores.get("spending_power", 50) >= 40 else
+        "Lower spending power area. Predominantly budget-priced places "
+        "nearby. Premium brands may face resistance — value positioning "
+        "strongly recommended."
+    )
+    story.append(Paragraph(spending_txt, S_body))
 
     hline(30, color=C_LINE)
     text(W/2, 16, "SiteScore Analytics  |  Confidential", size=8, color=C_GREY, align="center")
