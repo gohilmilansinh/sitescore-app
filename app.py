@@ -7,6 +7,7 @@ from report import generate_report
 import time
 import io
 import streamlit.components.v1 as components
+from benchmarks import get_benchmark_stats, get_percentile, get_category_context
 
 st.set_page_config(
     page_title="SiteScore — Retail Site Intelligence",
@@ -150,6 +151,48 @@ if mode == "Single Site":
                   <div class='metric-val' style='color:{col}'>{s}</div>
                   <div class='metric-lbl'>{label}</div>
                 </div>""", unsafe_allow_html=True)
+
+        # Benchmark context — add inside col_score after the score box
+            benchmark = get_category_context(total, brand_type)
+            stats      = benchmark["stats"]
+            percentile = benchmark["percentile"]
+
+            bar_pct    = min(percentile, 100)
+            bar_color  = "#1D9E75" if percentile >= 65 else \
+                        "#BA7517" if percentile >= 40 else "#C0392B"
+
+            st.markdown(f"""
+            <div style='background:#111;border:1px solid #2a2a2a;
+                        border-radius:10px;padding:14px 16px;margin-top:10px'>
+              <div style='font-size:10px;color:#888;
+                          letter-spacing:1px;margin-bottom:8px'>
+                BENCHMARK COMPARISON
+              </div>
+
+              <div style='font-size:13px;color:white;margin-bottom:10px'>
+                Better than <span style='color:{bar_color};font-weight:700;
+                font-size:18px'>{percentile}%</span>
+                of known {brand_type} sites in Ahmedabad
+              </div>
+
+              <div style='background:#333;border-radius:4px;
+                          height:8px;margin-bottom:12px'>
+                <div style='width:{bar_pct}%;background:{bar_color};
+                            height:8px;border-radius:4px'></div>
+              </div>
+
+              <div style='display:flex;justify-content:space-between;
+                          font-size:10px;color:#666'>
+                <span>Lowest<br><b style='color:#888'>{stats['lowest']}</b></span>
+                <span style='text-align:center'>Avg<br>
+                  <b style='color:#888'>{stats['average']}</b></span>
+                <span style='text-align:center'>Top sites<br>
+                  <b style='color:#888'>{stats['top_sites_avg']}</b></span>
+                <span style='text-align:right'>Highest<br>
+                  <b style='color:#888'>{stats['highest']}</b></span>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
 
         with col_radar:
             cats = ["Demand","Footfall","Competition",

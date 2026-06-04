@@ -2,6 +2,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import mm
+from benchmarks import get_category_context
 
 def generate_report(result, output_path="site_report.pdf"):
     scores  = result["scores"]
@@ -374,6 +375,25 @@ def generate_report(result, output_path="site_report.pdf"):
          color=colors.HexColor("#9ecfc0"), align="right")
 
     y = banner_y - 24
+    # Benchmark context
+    brand_type = result.get("brand_type", "restaurant")
+    benchmark  = get_category_context(total, brand_type)
+    stats      = benchmark["stats"]
+    percentile = benchmark["percentile"]
+
+    y -= 10
+    y = section_header(y, "Benchmark Comparison")
+
+    y = kv_row(y, "Percentile rank",
+               f"Top {100 - percentile}% of Ahmedabad {brand_type} locations")
+    y = kv_row(y, "This site score",    str(total))
+    y = kv_row(y, "Benchmark average",  str(stats["average"]))
+    y = kv_row(y, "Top sites average",  str(stats["top_sites_avg"]))
+    y = kv_row(y, "Sites benchmarked",  str(stats["count"]))
+
+    y -= 6
+    y = body_text(LM, y, benchmark["context"], size=10, color=C_GREY)
+    y -= 10
 
     # Risk flags
     risks = []
