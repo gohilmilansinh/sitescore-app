@@ -230,8 +230,8 @@ def generate_report(result, output_path="site_report.pdf"):
         "Low demand score indicates sparse residential density. Revenue will depend "
         "almost entirely on destination visits and anchor-driven footfall."
     )
-    body_text(LM, y, demand_txt)
-    # After the demand/footfall kv_table, add:
+    y = body_text(LM, y, demand_txt)
+    y -= 16  # breathing room after paragraph
     spending_data = result.get("raw", {}).get("spending_data", {})
     avg_price     = spending_data.get("avg_price_level")
     distribution  = spending_data.get("distribution", {})
