@@ -73,12 +73,6 @@ WEIGHTS = {
     "spending_power":  0.15,  # new variable
 }
 
-def geocode(address):
-    result = gmaps.geocode(address)
-    if not result:
-        return None, None
-    loc = result[0]["geometry"]["location"]
-    return loc["lat"], loc["lng"]
 
 def score_demand(lat, lng):
     tags = {"building": ["residential", "apartments", "house"]}
