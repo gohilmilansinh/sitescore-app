@@ -213,6 +213,51 @@ if mode == "Single Site":
                 "<div class='ok-box'>No significant risk flags at this location</div>",
                 unsafe_allow_html=True)
 
+        # Competitor breakdown
+        if result.get("competitor_details"):
+            st.markdown("### Nearby Competitors")
+
+            competitors = sorted(
+                result["competitor_details"],
+                key=lambda x: x["strength"],
+                reverse=True
+            )[:8]  # show top 8 only
+
+            for comp in competitors:
+                strength     = comp["strength"]
+                bar_color    = "#C0392B" if strength > 0.6 else \
+                              "#BA7517" if strength > 0.3 else "#1D9E75"
+                bar_width    = int(strength * 100)
+                stars        = "★" * int(round(comp["rating"])) + \
+                              "☆" * (5 - int(round(comp["rating"])))
+                review_label = f"{comp['reviews']:,} reviews" \
+                              if comp["reviews"] > 0 else "No reviews"
+
+                st.markdown(f"""
+                <div style='background:var(--background-color, #1a1a1a);
+                            border:1px solid #333;border-radius:8px;
+                            padding:10px 14px;margin-bottom:6px'>
+                  <div style='display:flex;justify-content:space-between;
+                              align-items:center;margin-bottom:6px'>
+                    <span style='font-size:13px;font-weight:600;
+                                color:white'>{comp["name"]}</span>
+                    <span style='font-size:11px;color:#888'>
+                      {stars} &nbsp;{review_label}</span>
+                  </div>
+                  <div style='display:flex;align-items:center;gap:10px'>
+                    <div style='flex:1;background:#333;border-radius:4px;height:6px'>
+                      <div style='width:{bar_width}%;background:{bar_color};
+                                  height:6px;border-radius:4px'></div>
+                    </div>
+                    <span style='font-size:11px;color:{bar_color};
+                                min-width:80px;text-align:right'>
+                      {"Strong" if strength > 0.6 else
+                      "Moderate" if strength > 0.3 else "Weak"} competitor
+                    </span>
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+
         # PDF download
         st.markdown("---")
         with st.spinner("Preparing PDF report..."):

@@ -68,16 +68,63 @@ BRAND_KEYWORDS = {
 }
 
 def score_competition(lat, lng, brand_type="restaurant"):
-    keyword = BRAND_KEYWORDS.get(brand_type,
-              BRAND_KEYWORDS["restaurant"])
+    keyword = BRAND_KEYWORDS.get(brand_type, BRAND_KEYWORDS["restaurant"])
+    
     result = gmaps.places_nearby(
         location=(lat, lng),
         radius=500,
         keyword=keyword,
         type=brand_type if brand_type != "school" else "school"
     )
-    count = len(result.get("results", []))
-    return round(max(100 - (count / 20 * 100), 0), 1)
+    
+    places = result.get("results", [])
+    
+    if not places:
+        return 100.0  # no competitors = perfect score
+    
+    # Calculate weighted competitor pressure
+    # A place with 1000+ reviews = 1.0 (strong competitor)
+    # A place with 100 reviews  = 0.3 (moderate competitor)
+    # A place with 10 reviews   = 0.1 (weak competitor)
+    weighted_pressure = 0
+    competitor_details = []
+
+    for place in places:
+        review_count  = place.get("user_ratings_total", 0)
+        rating        = place.get("rating", 3.0)
+        name          = place.get("name", "Unknown")
+
+        # Review count weight: logarithmic scale
+        # log10(1000) = 3.0 → weight 1.0 (capped)
+        # log10(100)  = 2.0 → weight 0.67
+        # log10(10)   = 1.0 → weight 0.33
+        # log10(1)    = 0   → weight 0.0
+        import math
+        if review_count > 0:
+            review_weight = min(math.log10(review_count) / 3.0, 1.0)
+        else:
+            review_weight = 0.05  # exists but unreviewed
+
+        # Rating weight: higher rated = stronger competitor
+        # Scale 1–5 → 0.2–1.0
+        rating_weight = rating / 5.0
+
+        # Combined competitor strength
+        strength = review_weight * 0.7 + rating_weight * 0.3
+
+        weighted_pressure += strength
+        competitor_details.append({
+            "name":    name,
+            "reviews": review_count,
+            "rating":  rating,
+            "strength": round(strength, 2)
+        })
+
+    # Normalize: 10 full-strength competitors = score 0
+    # Score = how much white space remains
+    score = max(100 - (weighted_pressure / 10 * 100), 0)
+
+    return round(score, 1), competitor_details
 
 def score_accessibility(lat, lng):
     try:
@@ -101,22 +148,27 @@ def score_site(address, brand_type="restaurant"):
     if not lat:
         return None
 
+    competition_score, competitor_details = score_competition(
+        lat, lng, brand_type)
+
     scores = {
         "demand":        score_demand(lat, lng),
-        "footfall":      score_footfall(lat, lng, brand_type),  # now brand-aware
-        "competition":   score_competition(lat, lng, brand_type),  # now brand-aware
+        "footfall":      score_footfall(lat, lng, brand_type),
+        "competition":   competition_score,
         "accessibility": score_accessibility(lat, lng),
         "catchment":     score_catchment(lat, lng)
     }
 
     total = sum(scores[k] * WEIGHTS[k] for k in scores)
+
     return {
-        "address":     address,
-        "lat":         lat,
-        "lng":         lng,
-        "brand_type":  brand_type,
-        "scores":      scores,
-        "total_score": round(total, 1),
-        "verdict": "Strong" if total >= 65 else
-                   "Moderate" if total >= 45 else "Weak"
+        "address":            address,
+        "lat":                lat,
+        "lng":                lng,
+        "brand_type":         brand_type,
+        "scores":             scores,
+        "total_score":        round(total, 1),
+        "verdict":            "Strong" if total >= 65 else
+                              "Moderate" if total >= 45 else "Weak",
+        "competitor_details": competitor_details
     }

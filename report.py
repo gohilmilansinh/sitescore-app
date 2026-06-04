@@ -240,10 +240,13 @@ def generate_report(result, output_path="site_report.pdf"):
     y = H - 40
     y = section_header(y, "Competitive Landscape")
 
+    # Replace the simple comp_density with this
     comp_density = (
-        "High  (15+ QSRs within 500m)"       if scores["competition"] < 30 else
-        "Moderate  (5-14 QSRs within 500m)"  if scores["competition"] < 70 else
-        "Low  (fewer than 5 QSRs within 500m)"
+        "High — strong branded competitors present"
+        if scores["competition"] < 30 else
+        "Moderate — mix of branded and local competitors"
+        if scores["competition"] < 70 else
+        "Low — mostly unrated or weak local competitors"
     )
     y = kv_row(y, "Competition score",  f"{scores['competition']} / 100")
     y = kv_row(y, "Analysis radius",    "500 m")
