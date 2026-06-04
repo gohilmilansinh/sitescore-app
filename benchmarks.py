@@ -35,32 +35,66 @@ BENCHMARK_DATA = [
     ("D-Mart, Bopal, Ahmedabad",            "supermarket", 78.0, "suburban"),
     ("Reliance Fresh, Navrangpura",         "supermarket", 84.0, "commercial"),
     ("D-Mart, Vastral, Ahmedabad",          "supermarket", 69.0, "suburban"),
+
+    # Surat QSR locations
+    ("Domino's Pizza, Adajan, Surat",       "restaurant", 81.0, "residential"),
+    ("KFC, VR Mall, Surat",                 "restaurant", 86.0, "mall"),
+    ("McDonald's, Varachha, Surat",         "restaurant", 74.0, "commercial"),
+    ("Pizza Hut, Vesu, Surat",              "restaurant", 78.0, "residential"),
+    ("Wow Momo, Athwa, Surat",              "restaurant", 82.0, "high_street"),
+
+    # Vadodara QSR locations
+    ("Domino's Pizza, Alkapuri, Vadodara",  "restaurant", 83.0, "high_street"),
+    ("KFC, Akota, Vadodara",                "restaurant", 79.0, "residential"),
+    ("McDonald's, Manjalpur, Vadodara",     "restaurant", 76.0, "suburban"),
+
+    # Rajkot QSR locations
+    ("Domino's Pizza, Kalawad Road, Rajkot","restaurant", 77.0, "high_street"),
+    ("KFC, 150 Feet Ring Road, Rajkot",     "restaurant", 81.0, "highway"),
+
+    # Surat pharmacy
+    ("Apollo Pharmacy, Adajan, Surat",      "pharmacy",   79.0, "residential"),
+    ("MedPlus, Varachha, Surat",            "pharmacy",   72.0, "commercial"),
+
+    # Vadodara pharmacy
+    ("Apollo Pharmacy, Alkapuri, Vadodara", "pharmacy",   81.0, "high_street"),
 ]
 
 
 def get_benchmark_stats(brand_type="restaurant"):
-    """Returns benchmark statistics for a given brand type."""
     relevant = [
-        score for addr, btype, score, cat in BENCHMARK_DATA
-        if btype == brand_type
+        (score, addr) for addr, btype, score, cat
+        in BENCHMARK_DATA if btype == brand_type
     ]
 
     if not relevant:
-        relevant = [score for _, _, score, _ in BENCHMARK_DATA]
+        relevant = [(score, addr) for _, _, score, _ in BENCHMARK_DATA]
 
-    avg   = round(sum(relevant) / len(relevant), 1)
-    high  = max(relevant)
-    low   = min(relevant)
-    top25 = sorted(relevant, reverse=True)[:max(1, len(relevant)//4)]
-    top25_avg = round(sum(top25) / len(top25), 1)
+    scores_only = [s for s, _ in relevant]
+    avg         = round(sum(scores_only) / len(scores_only), 1)
+    high        = max(scores_only)
+    low         = min(scores_only)
+    top25       = sorted(scores_only, reverse=True)
+    top25_avg   = round(
+        sum(top25[:max(1, len(top25)//4)]) /
+        max(1, len(top25)//4), 1
+    )
+
+    # City breakdown
+    city_counts = {}
+    for score, addr in relevant:
+        for city in ["Ahmedabad", "Surat", "Vadodara", "Rajkot"]:
+            if city.lower() in addr.lower():
+                city_counts[city] = city_counts.get(city, 0) + 1
 
     return {
-        "count":        len(relevant),
-        "average":      avg,
+        "count":         len(scores_only),
+        "average":       avg,
         "top_sites_avg": top25_avg,
-        "highest":      high,
-        "lowest":       low,
-        "brand_type":   brand_type
+        "highest":       high,
+        "lowest":        low,
+        "brand_type":    brand_type,
+        "cities":        city_counts
     }
 
 

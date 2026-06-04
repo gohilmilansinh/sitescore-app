@@ -3,6 +3,61 @@ import googlemaps
 import json
 import os
 
+SUPPORTED_CITIES = [
+    "ahmedabad", "surat", "vadodara", "baroda",
+    "rajkot", "gandhinagar", "anand", "mehsana",
+    "bharuch", "bhavnagar", "jamnagar", "junagadh",
+    "gujarat", "gj"
+]
+
+def validate_address(address):
+    """
+    Checks if address is likely in Gujarat.
+    Returns (is_valid, message)
+    """
+    address_lower = address.lower()
+
+    # Check if any Gujarat city or state name is mentioned
+    is_gujarat = any(city in address_lower for city in SUPPORTED_CITIES)
+
+    if not is_gujarat:
+        return False, (
+            "Address doesn't appear to be in Gujarat. "
+            "Please add a city name like 'Ahmedabad', 'Surat', "
+            "'Vadodara', or 'Rajkot' to your address."
+        )
+
+    # Check minimum length
+    if len(address.strip()) < 10:
+        return False, (
+            "Address too short. Please provide a more specific "
+            "address including area and city."
+        )
+
+    return True, "Valid"
+
+
+def geocode(address):
+    try:
+        result = gmaps.geocode(address)
+        if not result:
+            return None, None
+
+        # Verify result is actually in Gujarat
+        components = result[0].get("address_components", [])
+        state = ""
+        for comp in components:
+            if "administrative_area_level_1" in comp["types"]:
+                state = comp["long_name"].lower()
+
+        if "gujarat" not in state:
+            return None, None
+
+        loc = result[0]["geometry"]["location"]
+        return loc["lat"], loc["lng"]
+    except:
+        return None, None
+
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY","")
 gmaps = googlemaps.Client(key=GOOGLE_API_KEY)
 
@@ -184,9 +239,18 @@ def score_spending_power(lat, lng):
         return 50, {"avg_price_level": None, "sample_size": 0}
 
 def score_site(address, brand_type="restaurant"):
+    # Validate address first
+    is_valid, message = validate_address(address)
+    if not is_valid:
+        return {"error": message}
+
     lat, lng = geocode(address)
     if not lat:
-        return None
+        return {"error": (
+            "Could not find this address on the map. "
+            "Try being more specific — include area name, "
+            "city, and state (e.g. 'Bopal, Ahmedabad, Gujarat')."
+        )}
 
     demand_score,      demand_count       = score_demand(lat, lng)
     footfall_score,    footfall_found     = score_footfall(lat, lng, brand_type)

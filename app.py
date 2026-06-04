@@ -105,10 +105,16 @@ if mode == "Single Site":
         if address.strip():
             with st.spinner("Analysing location — takes 20–30 seconds..."):
                 result = score_site(address.strip(), brand_type)
-            if result:
-                st.session_state.result = result
+
+            if not result:
+                st.error("Something went wrong. Please try again.")
+            elif "error" in result:
+                st.error(result["error"])
             else:
-                st.error("Could not geocode. Try adding 'Ahmedabad, Gujarat'.")
+                st.session_state.result = result
+                st.session_state.result_address = address.strip()
+        else:
+            st.warning("Please enter an address first.")
 
     if st.session_state.result:
         result       = st.session_state.result
@@ -439,8 +445,10 @@ else:
             for i, addr in enumerate(addresses):
                 with st.spinner(f"Scoring site {i+1} of {len(addresses)}..."):
                     r = score_site(addr, brand_type_c)
-                    if r:
+                    if r and "error" not in r:
                         results.append(r)
+                    elif r and "error" in r:
+                        st.warning(f"Skipped '{addr}': {r['error']}")
                     progress.progress((i+1)/len(addresses),
                                       text=f"Scored {i+1} of {len(addresses)}")
                     time.sleep(0.5)
