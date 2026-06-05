@@ -58,19 +58,8 @@ if st.session_state.compared is not None:
 # SINGLE SITE MODE
 # ════════════════════════════════════════════════════════════
 if mode == "Single Site":
-
-    col_input, col_type = st.columns([3, 1])
-
-    with col_type:
-        brand_type = st.selectbox(
-            "Type",
-            ["restaurant", "pharmacy", "supermarket", "bank", "school"],
-            label_visibility="collapsed",
-            key="single_type",
-        )
-
-    with col_input:
-        GKEY = os.environ.get("GOOGLE_API_KEY", "")
+    
+    GKEY = os.environ.get("GOOGLE_API_KEY", "")
 
     if "address" in st.query_params:
         st.session_state.search_address = st.query_params["address"]
