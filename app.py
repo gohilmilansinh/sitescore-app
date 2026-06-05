@@ -180,14 +180,13 @@ if mode == "Single Site":
             />
             <button id='clear-btn' onclick='clearInput()'>×</button>
           </div>
-          <button id='map-toggle' onclick='toggleMap()'
-            style='background:#0A2E26;color:#9ecfc0;
-                   border:1px solid #1D9E75;padding:10px 12px;
-                   border-radius:8px;cursor:pointer;font-size:18px;
-                   white-space:nowrap;flex-shrink:0'>
-            📍
-          </button>
         </div>
+        <button id='map-toggle' onclick='toggleMap()'
+          style='margin-top:6px;background:transparent;color:#9ecfc0;
+                 border:none;padding:0;cursor:pointer;font-size:11px;
+                 text-decoration:underline;font-family:sans-serif'>
+          📍 Pick exact location on map
+        </button>
 
         <div id='map-container'>
           <div id='map-div'></div>
