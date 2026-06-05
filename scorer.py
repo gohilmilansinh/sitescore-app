@@ -3,6 +3,36 @@ import googlemaps
 import json
 import os
 from census_data import score_population
+import streamlit as st
+
+@st.cache_data(ttl=3600)  # cache for 1 hour
+def cached_geocode(address):
+    return geocode(address)
+
+@st.cache_data(ttl=3600)
+def cached_demand(lat, lng):
+    return score_demand(lat, lng)
+
+@st.cache_data(ttl=3600)
+def cached_footfall(lat, lng, brand_type):
+    return score_footfall(lat, lng, brand_type)
+
+@st.cache_data(ttl=3600)
+def cached_competition(lat, lng, brand_type):
+    return score_competition(lat, lng, brand_type)
+
+@st.cache_data(ttl=3600)
+def cached_accessibility(lat, lng):
+    return score_accessibility(lat, lng)
+
+@st.cache_data(ttl=3600)
+def cached_catchment(lat, lng):
+    return score_catchment(lat, lng)
+
+@st.cache_data(ttl=3600)
+def cached_spending(lat, lng):
+    return score_spending_power(lat, lng)
+
 
 SUPPORTED_CITIES = [
     "ahmedabad", "surat", "vadodara", "baroda",
@@ -261,26 +291,24 @@ def score_spending_power(lat, lng):
         return 50, {"avg_price_level": None, "sample_size": 0}
 
 def score_site(address, brand_type="restaurant"):
-    # Validate address first
     is_valid, message = validate_address(address)
     if not is_valid:
         return {"error": message}
 
-    lat, lng = geocode(address)
+    lat, lng = cached_geocode(address)
     if not lat:
         return {"error": (
             "Could not find this address in Gujarat. "
-            "Make sure you include the area name and city — "
-            "e.g. 'Bopal, Ahmedabad, Gujarat'. "
-            "If the address is correct, try adding more detail."
+            "Try adding area name and city — "
+            "e.g. 'Bopal, Ahmedabad, Gujarat'."
         )}
 
-    demand_score,      demand_data        = score_demand(lat, lng)
-    footfall_score,    footfall_found     = score_footfall(lat, lng, brand_type)
-    competition_score, competitor_details = score_competition(lat, lng, brand_type)
-    access_score,      access_data        = score_accessibility(lat, lng)
-    catchment_score,   catchment_count    = score_catchment(lat, lng)
-    spending_score,    spending_data      = score_spending_power(lat, lng)
+    demand_score,      demand_data        = cached_demand(lat, lng)
+    footfall_score,    footfall_found     = cached_footfall(lat, lng, brand_type)
+    competition_score, competitor_details = cached_competition(lat, lng, brand_type)
+    access_score,      access_data        = cached_accessibility(lat, lng)
+    catchment_score,   catchment_count    = cached_catchment(lat, lng)
+    spending_score,    spending_data      = cached_spending(lat, lng)
 
     scores = {
         "demand":         demand_score,
