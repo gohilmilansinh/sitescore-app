@@ -739,13 +739,15 @@ elif mode == "History":
                         st.markdown(f"""
                         mode_badge = "Single Site" if entry.get("mode","single") == "single" else "Compare"
                         badge_color = "#185FA5" if mode_badge == "Single Site" else "#8B5CF6"
-                        st.markdown(f"""
-                        <div style='display:inline-block;background:{badge_color};
-                                    color:white;font-size:9px;font-weight:600;
-                                    padding:3px 8px;border-radius:20px;
-                                    margin-bottom:10px;letter-spacing:0.5px'>
-                          {mode_badge.upper()}
-                        </div>
+                        badge_html   = (
+                            f"<div style=\"display:inline-block;"
+                            f"background:{badge_color};color:white;"
+                            f"font-size:9px;font-weight:600;"
+                            f"padding:3px 8px;border-radius:20px;"
+                            f"margin-bottom:10px;letter-spacing:0.5px\">"
+                            f"{mode_badge.upper()}</div>"
+                        )
+                        st.markdown(badge_html, unsafe_allow_html=True)
                         """, unsafe_allow_html=True)
                           <div style='font-size:13px;color:white'>
                             {entry["timestamp"]}</div>
