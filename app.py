@@ -109,110 +109,255 @@ if st.session_state.compared is not None:
 if mode == "Single Site":
 
     col_input, col_type = st.columns([3, 1])
+
+    with col_type:
+        brand_type = st.selectbox(
+            "Type",
+            ["restaurant","pharmacy","supermarket","bank","school"],
+            label_visibility="collapsed",
+            key="single_type"
+        )
+
     with col_input:
         GKEY = os.environ.get("GOOGLE_API_KEY", "")
+
+        # Read address from query params if set by the component
+        if "address" in st.query_params:
+            st.session_state.search_address = st.query_params["address"]
+
+        current_address = st.session_state.get("search_address", "")
+
         search_html = f"""
-        <div style='position:relative;width:100%'>
+        <style>
+          * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+          body {{ background: transparent; }}
+
+          #search-wrapper {{
+            position: relative;
+            width: 100%;
+          }}
+
+          #pac-input {{
+            width: 100%;
+            padding: 11px 40px 11px 14px;
+            font-size: 14px;
+            border: 1px solid #1D9E75;
+            border-radius: 8px;
+            background: #0d1f1a;
+            color: white;
+            outline: none;
+            font-family: sans-serif;
+          }}
+
+          #pac-input::placeholder {{ color: #888; }}
+
+          #clear-btn {{
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 18px;
+            cursor: pointer;
+            display: none;
+          }}
+
+          #map-container {{
+            margin-top: 8px;
+            height: 280px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            display: none;
+            position: relative;
+          }}
+
+          #map-div {{ height: 100%; width: 100%; border-radius: 8px; }}
+
+          #map-toggle {{
+            margin-top: 8px;
+            background: #0A2E26;
+            color: #9ecfc0;
+            border: 1px solid #1D9E75;
+            padding: 7px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: sans-serif;
+            width: 100%;
+          }}
+
+          #map-toggle:hover {{ background: #1a4a3a; }}
+
+          #status {{
+            margin-top: 6px;
+            font-size: 11px;
+            color: #1D9E75;
+            font-family: sans-serif;
+            min-height: 16px;
+          }}
+        </style>
+
+        <div id='search-wrapper'>
           <input
             id='pac-input'
             type='text'
             placeholder='Search any location in Gujarat...'
-            style='width:100%;padding:10px 14px;font-size:14px;
-                   border:1px solid #444;border-radius:6px;
-                   background:#111;color:white;outline:none;
-                   box-sizing:border-box'
+            value='{current_address}'
+            autocomplete='off'
           />
-          <div id='map-picker'
-            style='margin-top:8px;height:260px;border-radius:8px;
-                   border:1px solid #333;display:none'>
-          </div>
-          <button onclick='toggleMap()'
-            style='margin-top:6px;background:#0A2E26;color:#9ecfc0;
-                   border:1px solid #1D9E75;padding:6px 14px;
-                   border-radius:6px;cursor:pointer;font-size:12px'>
-            Pick location on map
-          </button>
-          <div id='selected-display'
-            style='margin-top:6px;font-size:11px;color:#9ecfc0;
-                   display:none'>
-          </div>
+          <button id='clear-btn' onclick='clearInput()'>×</button>
         </div>
+
+        <button id='map-toggle' onclick='toggleMap()'>
+          📍 Pick exact location on map
+        </button>
+
+        <div id='map-container'>
+          <div id='map-div'></div>
+        </div>
+
+        <div id='status'></div>
 
         <script>
           let map, marker, autocomplete, mapVisible = false;
+          const input = document.getElementById('pac-input');
+          const clearBtn = document.getElementById('clear-btn');
+          const status = document.getElementById('status');
+
+          input.addEventListener('input', function() {{
+            clearBtn.style.display = this.value ? 'block' : 'none';
+          }});
+
+          if (input.value) clearBtn.style.display = 'block';
+
+          function clearInput() {{
+            input.value = '';
+            clearBtn.style.display = 'none';
+            status.textContent = '';
+            if (marker) marker.setMap(null);
+          }}
+
+          function setAddress(addr) {{
+            input.value = addr;
+            clearBtn.style.display = 'block';
+            status.textContent = 'Ready — click Score This Site';
+
+            // Send to Streamlit via query params
+            const url = new URL(window.parent.location.href);
+            url.searchParams.set('address', addr);
+            window.parent.history.replaceState({{}}, '', url);
+
+            // Trigger Streamlit rerun
+            window.parent.postMessage({{
+              type: 'streamlit:rerun'
+            }}, '*');
+          }}
 
           function initMap() {{
-            autocomplete = new google.maps.places.Autocomplete(
-              document.getElementById('pac-input'),
-              {{
-                componentRestrictions: {{ country: 'in' }},
-                bounds: new google.maps.LatLngBounds(
-                  new google.maps.LatLng(20.1, 68.1),
-                  new google.maps.LatLng(24.7, 74.5)
-                ),
-                strictBounds: false,
-                fields: ['formatted_address','geometry','name']
-              }}
-            );
+            // Autocomplete
+            autocomplete = new google.maps.places.Autocomplete(input, {{
+              componentRestrictions: {{ country: 'in' }},
+              bounds: new google.maps.LatLngBounds(
+                new google.maps.LatLng(20.1, 68.1),
+                new google.maps.LatLng(24.7, 74.5)
+              ),
+              strictBounds: false,
+              fields: ['formatted_address', 'geometry', 'name']
+            }});
 
             autocomplete.addListener('place_changed', function() {{
               const place = autocomplete.getPlace();
               if (!place.geometry) return;
+
               const addr = place.formatted_address || place.name;
-              document.getElementById('confirm-box').value = addr;
-              showSelected(addr,
-                place.geometry.location.lat(),
-                place.geometry.location.lng());
+              setAddress(addr);
+
+              // Pan map to selected place
+              if (map) {{
+                map.setCenter(place.geometry.location);
+                map.setZoom(16);
+                placeMarker(place.geometry.location,
+                            place.geometry.location.lat(),
+                            place.geometry.location.lng(),
+                            addr);
+              }}
             }});
 
-            map = new google.maps.Map(
-              document.getElementById('map-picker'), {{
-                center: {{ lat: 23.0225, lng: 72.5714 }},
-                zoom: 11,
-                mapTypeControl: false,
-                streetViewControl: false
-              }}
-            );
+            // Map
+            map = new google.maps.Map(document.getElementById('map-div'), {{
+              center: {{ lat: 23.0225, lng: 72.5714 }},
+              zoom: 12,
+              mapTypeControl: false,
+              streetViewControl: false,
+              fullscreenControl: false,
+              styles: [
+                {{ elementType: 'geometry',
+                   stylers: [{{ color: '#1a2a1a' }}] }},
+                {{ elementType: 'labels.text.fill',
+                   stylers: [{{ color: '#9ecfc0' }}] }},
+                {{ elementType: 'labels.text.stroke',
+                   stylers: [{{ color: '#0d1f1a' }}] }},
+                {{ featureType: 'road',
+                   elementType: 'geometry',
+                   stylers: [{{ color: '#2a4a2a' }}] }},
+                {{ featureType: 'water',
+                   elementType: 'geometry',
+                   stylers: [{{ color: '#0d1f2a' }}] }}
+              ]
+            }});
 
             map.addListener('click', function(e) {{
-              const lat = e.latLng.lat().toFixed(6);
-              const lng = e.latLng.lng().toFixed(6);
-              const coords = lat + ', ' + lng + ', Gujarat, India';
+              const lat = e.latLng.lat();
+              const lng = e.latLng.lng();
 
-              if (marker) marker.setMap(null);
-              marker = new google.maps.Marker({{
-                position: e.latLng,
-                map: map,
-                icon: {{
-                  path: google.maps.SymbolPath.CIRCLE,
-                  scale: 8,
-                  fillColor: '#1D9E75',
-                  fillOpacity: 1,
-                  strokeColor: '#0A2E26',
-                  strokeWeight: 2
+              // Reverse geocode to get place name
+              const geocoder = new google.maps.Geocoder();
+              geocoder.geocode({{ location: e.latLng }}, function(results, s) {{
+                let addr;
+                if (s === 'OK' && results[0]) {{
+                  addr = results[0].formatted_address;
+                }} else {{
+                  addr = lat.toFixed(6) + ', ' + lng.toFixed(6) +
+                         ', Gujarat, India';
                 }}
+                placeMarker(e.latLng, lat, lng, addr);
+                setAddress(addr);
               }});
+            }});
+          }}
 
-              document.getElementById('confirm-box').value = coords;
-              showSelected(coords, parseFloat(lat), parseFloat(lng));
+          function placeMarker(position, lat, lng, addr) {{
+            if (marker) marker.setMap(null);
+            marker = new google.maps.Marker({{
+              position: position,
+              map: map,
+              title: addr,
+              icon: {{
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: '#1D9E75',
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 2
+              }}
             }});
           }}
 
           function toggleMap() {{
-            const mapDiv = document.getElementById('map-picker');
+            const container = document.getElementById('map-container');
+            const btn = document.getElementById('map-toggle');
             mapVisible = !mapVisible;
-            mapDiv.style.display = mapVisible ? 'block' : 'none';
+            container.style.display = mapVisible ? 'block' : 'none';
+            btn.textContent = mapVisible
+              ? '✕ Close map'
+              : '📍 Pick exact location on map';
             if (mapVisible) {{
-              google.maps.event.trigger(map, 'resize');
+              setTimeout(function() {{
+                google.maps.event.trigger(map, 'resize');
+              }}, 100);
             }}
-          }}
-
-          function showSelected(addr, lat, lng) {{
-            const el = document.getElementById('selected-display');
-            el.style.display = 'block';
-            el.innerHTML = 'Selected: ' + addr.substring(0, 60) +
-              ' (' + parseFloat(lat).toFixed(4) +
-              ', ' + parseFloat(lng).toFixed(4) + ')';
           }}
         </script>
 
@@ -220,32 +365,18 @@ if mode == "Single Site":
           src="https://maps.googleapis.com/maps/api/js?key={GKEY}&libraries=places&callback=initMap"
           async defer>
         </script>
-
-        <div style='margin-top:10px'>
-          <input
-            id='confirm-box'
-            type='text'
-            placeholder='Selected address will appear here — or type manually'
-            style='width:100%;padding:10px 14px;font-size:13px;
-                   border:1px solid #1D9E75;border-radius:6px;
-                   background:#0d1f1a;color:white;outline:none;
-                   box-sizing:border-box'
-          />
-          <div style='font-size:10px;color:#888;margin-top:4px'>
-            Pick from suggestions above, click the map,
-            or type an address directly in this box
-          </div>
-        </div>
         """
 
-        components.html(search_html, height=380, scrolling=False)
+        components.html(search_html, height=420, scrolling=False)
 
-        # This is the actual Streamlit input Streamlit can read
-        # User copies address here from the green box above
-        address = st.text_input(
-            "Confirm and score:",
-            placeholder="Paste or type the address here then click Score",
-            key="confirmed_address"
+    # Address comes from query params set by the component
+    address = st.session_state.get("search_address", "")
+
+    if address:
+        st.markdown(
+            f"<div style='font-size:12px;color:#1D9E75;margin-top:-8px;"
+            f"margin-bottom:8px'>📍 {address}</div>",
+            unsafe_allow_html=True
         )
 
     with col_type:
