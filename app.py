@@ -319,9 +319,31 @@ if mode == "Single Site":
                               margin-top:1px'>{note}</div>
                 </div>""", unsafe_allow_html=True)
 
-            mini_row("Residential buildings",
-                     f"{raw.get('demand_buildings',0):,}",
-                     "within 1km via OSM")
+            raw    = result.get("raw", {})
+        method = raw.get("demand_method", "osm_buildings")
+
+        if method == "census_2011":
+            mini_row(
+                "Est. population within 1km",
+                f"{raw.get('demand_population',0):,}",
+                f"Census 2011 ward data · "
+                f"{raw.get('demand_households',0):,} households"
+            )
+            wards = raw.get("demand_wards", [])
+            if wards:
+                ward_names = " · ".join(
+                    w["name"] for w in wards[:3])
+                mini_row(
+                    "Contributing wards",
+                    str(len(wards)),
+                    ward_names
+                )
+        else:
+            mini_row(
+                "Residential buildings within 1km",
+                f"{raw.get('demand_buildings',0):,}",
+                "OpenStreetMap buildings (Census data unavailable)"
+            )
             mini_row("Footfall anchors",
                      str(sum(raw.get('footfall_anchors',{}).values())
                          if raw.get('footfall_anchors') else 0),

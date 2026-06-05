@@ -209,9 +209,28 @@ def generate_report(result, output_path="site_report.pdf"):
     y = H - 40
     y = section_header(y, "Demand & Footfall Analysis")
 
-    y = kv_row(y, "Demand score",    f"{scores['demand']} / 100")
-    y = kv_row(y, "Analysis radius", "1,000 m")
-    y = kv_row(y, "Data source",     "OpenStreetMap residential buildings")
+    raw    = result.get("raw", {})
+    method = raw.get("demand_method", "osm_buildings")
+
+    if method == "census_2011":
+        y = kv_row(y, "Demand score",
+                   f"{scores['demand']} / 100")
+        y = kv_row(y, "Est. population within 1km",
+                   f"{raw.get('demand_population', 0):,}")
+        y = kv_row(y, "Est. households within 1km",
+                   f"{raw.get('demand_households', 0):,}")
+        y = kv_row(y, "Data source",
+                   "Census of India 2011 ward data")
+        wards = raw.get("demand_wards", [])
+        if wards:
+            ward_str = ", ".join(w["name"] for w in wards[:3])
+            y = kv_row(y, "Contributing wards", ward_str)
+    else:
+        y = kv_row(y, "Demand score",
+                   f"{scores['demand']} / 100")
+        y = kv_row(y, "Analysis radius",  "1,000 m")
+        y = kv_row(y, "Data source",
+                   "OpenStreetMap residential buildings")
     y -= 6
     y = kv_row(y, "Footfall score",  f"{scores['footfall']} / 100")
     y = kv_row(y, "Anchor radius",   "500 m")

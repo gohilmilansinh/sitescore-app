@@ -2,6 +2,7 @@ import osmnx as ox
 import googlemaps
 import json
 import os
+from census_data import score_population
 
 SUPPORTED_CITIES = [
     "ahmedabad", "surat", "vadodara", "baroda",
@@ -75,13 +76,37 @@ WEIGHTS = {
 
 
 def score_demand(lat, lng):
-    tags = {"building": ["residential", "apartments", "house"]}
+    """
+    Uses Census 2011 ward data to estimate population
+    within 1km. More accurate than building count.
+    """
     try:
-        b     = ox.features_from_point((lat, lng), tags=tags, dist=1000)
-        count = len(b)
-        return round(min(count / 200 * 100, 100), 1), count
-    except:
-        return 30, 0
+        pop_score, pop_data = score_population(lat, lng)
+
+        # Fallback to OSM buildings if population estimate is zero
+        if pop_data["estimated_population"] == 0:
+            tags  = {"building": ["residential", "apartments", "house"]}
+            b     = ox.features_from_point((lat, lng), tags=tags, dist=1000)
+            count = len(b)
+            return round(min(count / 200 * 100, 100), 1), {
+                "method":     "osm_buildings",
+                "count":      count,
+                "population": 0,
+                "households": 0
+            }
+
+        return pop_score, {
+            "method":      "census_2011",
+            "population":  pop_data["estimated_population"],
+            "households":  pop_data["estimated_households"],
+            "wards":       pop_data["contributing_wards"]
+        }
+    except Exception as e:
+        return 30, {
+            "method":     "fallback",
+            "population": 0,
+            "households": 0
+        }
 
 FOOTFALL_ANCHORS = {
     "restaurant":  ["supermarket", "hospital", "school",
@@ -250,7 +275,7 @@ def score_site(address, brand_type="restaurant"):
             "If the address is correct, try adding more detail."
         )}
 
-    demand_score,      demand_count       = score_demand(lat, lng)
+    demand_score,      demand_data        = score_demand(lat, lng)
     footfall_score,    footfall_found     = score_footfall(lat, lng, brand_type)
     competition_score, competitor_details = score_competition(lat, lng, brand_type)
     access_score,      access_data        = score_accessibility(lat, lng)
@@ -279,7 +304,11 @@ def score_site(address, brand_type="restaurant"):
                               "Moderate" if total >= 45 else "Weak",
         "competitor_details": competitor_details,
         "raw": {
-            "demand_buildings":  demand_count,
+            "demand_buildings":  demand_data.get("count", 0),
+            "demand_population": demand_data.get("population", 0),
+            "demand_households": demand_data.get("households", 0),
+            "demand_method":     demand_data.get("method", "unknown"),
+            "demand_wards":      demand_data.get("wards", []),
             "footfall_anchors":  footfall_found,
             "intersections":     access_data["intersections"],
             "road_nodes":        access_data["total_nodes"],
