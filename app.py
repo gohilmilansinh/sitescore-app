@@ -166,7 +166,7 @@ if mode == "Single Site":
 
           #map-container {{
             margin-top: 8px;
-            height: 280px;
+            height: 260px;
             border-radius: 8px;
             border: 1px solid #333;
             display: none;
@@ -355,6 +355,11 @@ if mode == "Single Site":
               setTimeout(function() {{
                 google.maps.event.trigger(map, 'resize');
               }}, 100);
+              // Tell parent iframe to grow
+              window.frameElement.style.height = '340px';
+            }} else {{
+              // Shrink back
+              window.frameElement.style.height = '52px';
             }}
           }}
         </script>
@@ -365,7 +370,7 @@ if mode == "Single Site":
         </script>
         """
 
-        components.html(search_html, height=360, scrolling=False)
+        components.html(search_html, height=52, scrolling=False)
 
     # Address comes from query params set by the component
     address = st.session_state.get("search_address", "")
