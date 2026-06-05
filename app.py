@@ -385,23 +385,23 @@ if mode == "Single Site":
             unsafe_allow_html=True
         )
 
-if st.button("Score This Site", type="primary", use_container_width=True):
-    if address.strip():
-        with st.spinner("Analysing location — takes 20–30 seconds..."):
-            result = score_site(address.strip(), brand_type)
+    if st.button("Score This Site", type="primary", use_container_width=True):
+        if address.strip():
+            with st.spinner("Analysing location — takes 20–30 seconds..."):
+                result = score_site(address.strip(), brand_type)
 
-        if not result:
-            st.session_state.result = None
-            st.error("Something went wrong. Please try again.")
-        elif "error" in result:
-            st.session_state.result = None
-            st.error(result["error"])
+            if not result:
+                st.session_state.result = None
+                st.error("Something went wrong. Please try again.")
+            elif "error" in result:
+                st.session_state.result = None
+                st.error(result["error"])
+            else:
+                result["mode"] = "single"
+                st.session_state.result = result
+                save_to_history(result)
         else:
-            result["mode"] = "single"
-            st.session_state.result = result
-            save_to_history(result)
-    else:
-        st.warning("Please enter an address first.")
+            st.warning("Please enter an address first.")
 
     if st.session_state.result and "error" not in st.session_state.result:
         result   = st.session_state.result
