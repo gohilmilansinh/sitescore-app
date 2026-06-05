@@ -9,6 +9,7 @@ import io
 import streamlit.components.v1 as components
 from history import load_history, save_to_history, clear_history
 from benchmarks import get_benchmark_stats, get_percentile, get_category_context
+import os
 
 st.set_page_config(
     page_title="SiteScore — Retail Site Intelligence",
