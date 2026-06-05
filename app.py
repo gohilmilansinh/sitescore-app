@@ -180,7 +180,6 @@ if mode == "Single Site":
             />
             <button id='clear-btn' onclick='clearInput()'>×</button>
           </div>
-          <button id='search-btn' onclick='searchAddress()' title='Search'>🔍</button>
           <button id='map-toggle' onclick='toggleMap()'
             style='background:#0A2E26;color:#9ecfc0;
                    border:1px solid #1D9E75;padding:10px 12px;
@@ -351,13 +350,15 @@ if mode == "Single Site":
 
           function toggleMap() {{
             const container = document.getElementById('map-container');
+            const btnRow = document.getElementById('score-btn-row');
             mapVisible = !mapVisible;
             container.style.display = mapVisible ? 'block' : 'none';
+            if (btnRow) btnRow.style.display = mapVisible ? 'block' : 'none';
             if (mapVisible) {{
               setTimeout(function() {{
                 google.maps.event.trigger(map, 'resize');
               }}, 100);
-              window.frameElement.style.height = '400px';
+              window.frameElement.style.height = '420px';
             }} else {{
               window.frameElement.style.height = '52px';
             }}
@@ -370,7 +371,27 @@ if mode == "Single Site":
         </script>
         """
 
-        components.html(search_html, height=52, scrolling=False)
+        # Inject score button inside HTML so it moves below map when open
+        search_html_final = search_html + f"""
+        <div id='score-btn-row' style='margin-top:8px;display:none'>
+          <button
+            onclick='triggerScore()'
+            style='width:100%;padding:12px;font-size:15px;font-weight:600;
+                   background:#E74C3C;color:white;border:none;
+                   border-radius:8px;cursor:pointer;font-family:sans-serif'>
+            Score This Site
+          </button>
+        </div>
+        <script>
+          function triggerScore() {{
+            const url = new URL(window.parent.location.href);
+            url.searchParams.set('do_score', '1');
+            window.parent.location.href = url.toString();
+          }}
+        </script>
+        """
+
+        components.html(search_html_final, height=52, scrolling=False)
 
     # Address comes from query params set by the component
     address = st.session_state.get("search_address", "")
@@ -382,6 +403,7 @@ if mode == "Single Site":
             unsafe_allow_html=True,
         )
 
+    # Show score button in HTML when map is open, Streamlit button always visible
     if st.button("Score This Site", type="primary", use_container_width=True):
         if address.strip():
             with st.spinner("Analysing location — takes 20–30 seconds..."):
