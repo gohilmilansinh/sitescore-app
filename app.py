@@ -350,15 +350,13 @@ if mode == "Single Site":
 
           function toggleMap() {{
             const container = document.getElementById('map-container');
-            const btnRow = document.getElementById('score-btn-row');
             mapVisible = !mapVisible;
             container.style.display = mapVisible ? 'block' : 'none';
-            if (btnRow) btnRow.style.display = mapVisible ? 'block' : 'none';
             if (mapVisible) {{
               setTimeout(function() {{
                 google.maps.event.trigger(map, 'resize');
               }}, 100);
-              window.frameElement.style.height = '420px';
+              window.frameElement.style.height = '400px';
             }} else {{
               window.frameElement.style.height = '52px';
             }}
@@ -371,27 +369,7 @@ if mode == "Single Site":
         </script>
         """
 
-        # Inject score button inside HTML so it moves below map when open
-        search_html_final = search_html + f"""
-        <div id='score-btn-row' style='margin-top:8px;display:none'>
-          <button
-            onclick='triggerScore()'
-            style='width:100%;padding:12px;font-size:15px;font-weight:600;
-                   background:#E74C3C;color:white;border:none;
-                   border-radius:8px;cursor:pointer;font-family:sans-serif'>
-            Score This Site
-          </button>
-        </div>
-        <script>
-          function triggerScore() {{
-            const url = new URL(window.parent.location.href);
-            url.searchParams.set('do_score', '1');
-            window.parent.location.href = url.toString();
-          }}
-        </script>
-        """
-
-        components.html(search_html_final, height=52, scrolling=False)
+        components.html(search_html, height=52, scrolling=False)
 
     # Address comes from query params set by the component
     address = st.session_state.get("search_address", "")
