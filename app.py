@@ -379,13 +379,6 @@ if mode == "Single Site":
             unsafe_allow_html=True
         )
 
-    with col_type:
-        brand_type = st.selectbox(
-            "Type",
-            ["restaurant","pharmacy","supermarket","bank","school"],
-            label_visibility="collapsed",
-            key="single_type"
-        )
 
     if st.button("Score This Site", type="primary", use_container_width=True):
         if address.strip():
