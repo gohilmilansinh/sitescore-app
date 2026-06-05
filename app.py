@@ -86,6 +86,7 @@ if mode == "Single Site":
           #search-wrapper {{
             position: relative;
             width: 100%;
+            z-index: 100000;
           }}
 
           #pac-input {{
@@ -113,7 +114,21 @@ if mode == "Single Site":
             font-size: 18px;
             cursor: pointer;
             display: none;
+            z-index: 100001;
           }}
+
+          #search-btn {{
+            background: #0A2E26;
+            color: #9ecfc0;
+            border: 1px solid #1D9E75;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            white-space:nowrap;
+            flex-shrink:0;
+          }}
+          #search-btn:hover {{ background: #1a4a3a; }}
 
           #map-container {{
             margin-top: 8px;
@@ -122,9 +137,10 @@ if mode == "Single Site":
             border: 1px solid #333;
             display: none;
             position: relative;
+            z-index: 0;
           }}
 
-          #map-div {{ height: 100%; width: 100%; border-radius: 8px; }}
+          #map-div {{ height: 100%; width: 100%; border-radius: 8px; z-index: 0 }}
 
           #map-toggle {{
             background: #0A2E26;
@@ -134,9 +150,14 @@ if mode == "Single Site":
             border-radius: 8px;
             cursor: pointer;
             font-size: 18px;
+            white-space:nowrap;flex-shrink:0
           }}
 
           #map-toggle:hover {{ background: #1a4a3a; }}
+
+          /* Ensure autocomplete suggestions appear above the map */
+          .pac-container {{ z-index: 2147483647 !important; position: absolute !important; }}
+          .pac-item {{ z-index: 2147483647 !important; }}
 
           #status {{
             margin-top: 6px;
@@ -144,6 +165,7 @@ if mode == "Single Site":
             color: #1D9E75;
             font-family: sans-serif;
             min-height: 16px;
+            z-index: 100002;
           }}
         </style>
 
@@ -158,6 +180,7 @@ if mode == "Single Site":
             />
             <button id='clear-btn' onclick='clearInput()'>×</button>
           </div>
+          <button id='search-btn' onclick='searchAddress()' title='Search'>🔍</button>
           <button id='map-toggle' onclick='toggleMap()'
             style='background:#0A2E26;color:#9ecfc0;
                    border:1px solid #1D9E75;padding:10px 12px;
@@ -178,7 +201,7 @@ if mode == "Single Site":
         <div id='status'></div>
 
         <script>
-          let map, marker, autocomplete, mapVisible = false;
+          let map, marker, autocomplete, mapVisible = false, geocoder;
           const input = document.getElementById('pac-input');
           const clearBtn = document.getElementById('clear-btn');
           const status = document.getElementById('status');
@@ -232,7 +255,7 @@ if mode == "Single Site":
               setAddress(addr);
 
               // Pan map to selected place
-              if (map) {{
+              if (map && place.geometry) {{
                 map.setCenter(place.geometry.location);
                 map.setZoom(16);
                 placeMarker(place.geometry.location,
@@ -265,12 +288,13 @@ if mode == "Single Site":
               ]
             }});
 
+            geocoder = new google.maps.Geocoder();
+
             map.addListener('click', function(e) {{
               const lat = e.latLng.lat();
               const lng = e.latLng.lng();
 
               // Reverse geocode to get place name
-              const geocoder = new google.maps.Geocoder();
               geocoder.geocode({{ location: e.latLng }}, function(results, s) {{
                 let addr;
                 if (s === 'OK' && results[0]) {{
@@ -302,9 +326,31 @@ if mode == "Single Site":
             }});
           }}
 
+          function searchAddress() {{
+            const q = input.value && input.value.trim();
+            if (!q) return;
+            if (!geocoder) geocoder = new google.maps.Geocoder();
+            geocoder.geocode({{ address: q }}, function(results, status) {{
+              if (status === 'OK' && results[0]) {{
+                const p = results[0];
+                const lat = p.geometry.location.lat();
+                const lng = p.geometry.location.lng();
+                const addr = p.formatted_address || q;
+                setAddress(addr);
+                if (map) {{
+                  map.setCenter(p.geometry.location);
+                  map.setZoom(16);
+                  placeMarker(p.geometry.location, lat, lng, addr);
+                }}
+              }} else {{
+                // fallback: just set address string
+                setAddress(q);
+              }}
+            }});
+          }}
+
           function toggleMap() {{
             const container = document.getElementById('map-container');
-            const scoreRow  = document.getElementById('score-row');
             mapVisible = !mapVisible;
             container.style.display = mapVisible ? 'block' : 'none';
             if (mapVisible) {{
