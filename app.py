@@ -218,6 +218,10 @@ if mode == "Single Site":
 
         <div id='map-container'>
           <div id='map-div'></div>
+          <div style='padding:8px;background:#0d1f1a;border-top:1px solid #333;
+                      font-size:11px;color:#9ecfc0;text-align:center'>
+            Click anywhere on map to select location · Click 📍 again to close
+          </div>
         </div>
 
         <div id='status'></div>
@@ -349,16 +353,15 @@ if mode == "Single Site":
 
           function toggleMap() {{
             const container = document.getElementById('map-container');
+            const scoreRow  = document.getElementById('score-row');
             mapVisible = !mapVisible;
             container.style.display = mapVisible ? 'block' : 'none';
             if (mapVisible) {{
               setTimeout(function() {{
                 google.maps.event.trigger(map, 'resize');
               }}, 100);
-              // Tell parent iframe to grow
-              window.frameElement.style.height = '340px';
+              window.frameElement.style.height = '400px';
             }} else {{
-              // Shrink back
               window.frameElement.style.height = '52px';
             }}
           }}
@@ -382,8 +385,7 @@ if mode == "Single Site":
             unsafe_allow_html=True
         )
 
-
-    if st.button("Score This Site", type="primary", use_container_width=True):
+if st.button("Score This Site", type="primary", use_container_width=True):
         if address.strip():
             with st.spinner("Analysing location — takes 20–30 seconds..."):
                 result = score_site(address.strip(), brand_type)
