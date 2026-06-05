@@ -82,6 +82,8 @@ mode = st.radio(
 # ── Session state ─────────────────────────────────────────
 if "result"   not in st.session_state: st.session_state.result   = None
 if "compared" not in st.session_state: st.session_state.compared = None
+if "search_address" not in st.session_state:
+    st.session_state.search_address = ""
 
 # Clear any stale error results from previous sessions
 if st.session_state.result is not None:
@@ -107,16 +109,150 @@ if mode == "Single Site":
 
     col_input, col_type = st.columns([3, 1])
     with col_input:
+        GKEY = os.environ.get("GOOGLE_API_KEY", "")
+        search_html = f"""
+        <div style='position:relative;width:100%'>
+          <input
+            id='pac-input'
+            type='text'
+            placeholder='Search any location in Gujarat...'
+            style='width:100%;padding:10px 14px;font-size:14px;
+                   border:1px solid #444;border-radius:6px;
+                   background:#111;color:white;outline:none;
+                   box-sizing:border-box'
+          />
+          <div id='map-picker'
+            style='margin-top:8px;height:260px;border-radius:8px;
+                   border:1px solid #333;display:none'>
+          </div>
+          <button onclick='toggleMap()'
+            style='margin-top:6px;background:#0A2E26;color:#9ecfc0;
+                   border:1px solid #1D9E75;padding:6px 14px;
+                   border-radius:6px;cursor:pointer;font-size:12px'>
+            Pick location on map
+          </button>
+          <div id='selected-display'
+            style='margin-top:6px;font-size:11px;color:#9ecfc0;
+                   display:none'>
+          </div>
+        </div>
+
+        <script>
+          let map, marker, autocomplete, mapVisible = false;
+
+          function initMap() {{
+            autocomplete = new google.maps.places.Autocomplete(
+              document.getElementById('pac-input'),
+              {{
+                componentRestrictions: {{ country: 'in' }},
+                bounds: new google.maps.LatLngBounds(
+                  new google.maps.LatLng(20.1, 68.1),
+                  new google.maps.LatLng(24.7, 74.5)
+                ),
+                strictBounds: false,
+                fields: ['formatted_address','geometry','name']
+              }}
+            );
+
+            autocomplete.addListener('place_changed', function() {{
+              const place = autocomplete.getPlace();
+              if (!place.geometry) return;
+              const addr = place.formatted_address || place.name;
+              document.getElementById('confirm-box').value = addr;
+              showSelected(addr,
+                place.geometry.location.lat(),
+                place.geometry.location.lng());
+            }});
+
+            map = new google.maps.Map(
+              document.getElementById('map-picker'), {{
+                center: {{ lat: 23.0225, lng: 72.5714 }},
+                zoom: 11,
+                mapTypeControl: false,
+                streetViewControl: false
+              }}
+            );
+
+            map.addListener('click', function(e) {{
+              const lat = e.latLng.lat().toFixed(6);
+              const lng = e.latLng.lng().toFixed(6);
+              const coords = lat + ', ' + lng + ', Gujarat, India';
+
+              if (marker) marker.setMap(null);
+              marker = new google.maps.Marker({{
+                position: e.latLng,
+                map: map,
+                icon: {{
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 8,
+                  fillColor: '#1D9E75',
+                  fillOpacity: 1,
+                  strokeColor: '#0A2E26',
+                  strokeWeight: 2
+                }}
+              }});
+
+              document.getElementById('confirm-box').value = coords;
+              showSelected(coords, parseFloat(lat), parseFloat(lng));
+            }});
+          }}
+
+          function toggleMap() {{
+            const mapDiv = document.getElementById('map-picker');
+            mapVisible = !mapVisible;
+            mapDiv.style.display = mapVisible ? 'block' : 'none';
+            if (mapVisible) {{
+              google.maps.event.trigger(map, 'resize');
+            }}
+          }}
+
+          function showSelected(addr, lat, lng) {{
+            const el = document.getElementById('selected-display');
+            el.style.display = 'block';
+            el.innerHTML = 'Selected: ' + addr.substring(0, 60) +
+              ' (' + parseFloat(lat).toFixed(4) +
+              ', ' + parseFloat(lng).toFixed(4) + ')';
+          }}
+        </script>
+
+        <script
+          src="https://maps.googleapis.com/maps/api/js?key={GKEY}&libraries=places&callback=initMap"
+          async defer>
+        </script>
+
+        <div style='margin-top:10px'>
+          <input
+            id='confirm-box'
+            type='text'
+            placeholder='Selected address will appear here — or type manually'
+            style='width:100%;padding:10px 14px;font-size:13px;
+                   border:1px solid #1D9E75;border-radius:6px;
+                   background:#0d1f1a;color:white;outline:none;
+                   box-sizing:border-box'
+          />
+          <div style='font-size:10px;color:#888;margin-top:4px'>
+            Pick from suggestions above, click the map,
+            or type an address directly in this box
+          </div>
+        </div>
+        """
+
+        components.html(search_html, height=380, scrolling=False)
+
+        # This is the actual Streamlit input Streamlit can read
+        # User copies address here from the green box above
         address = st.text_input(
-            "Address",
-            placeholder="e.g. CG Road, Ahmedabad, Gujarat",
-            label_visibility="collapsed",
-            key="single_address"
+            "Confirm and score:",
+            placeholder="Paste or type the address here then click Score",
+            key="confirmed_address"
         )
+
     with col_type:
         brand_type = st.selectbox(
-            "Type", ["restaurant","pharmacy","supermarket","bank","school"],
-            label_visibility="collapsed", key="single_type"
+            "Type",
+            ["restaurant","pharmacy","supermarket","bank","school"],
+            label_visibility="collapsed",
+            key="single_type"
         )
 
     if st.button("Score This Site", type="primary", use_container_width=True):
