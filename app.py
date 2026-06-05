@@ -736,81 +736,67 @@ elif mode == "History":
                     col_info, col_scores = st.columns([2, 3])
 
                     with col_info:
-                        st.markdown(f"""
-                        mode_badge = "Single Site" if entry.get("mode","single") == "single" else "Compare"
+                        mode_badge  = "Single Site" if entry.get("mode","single") == "single" else "Compare"
                         badge_color = "#185FA5" if mode_badge == "Single Site" else "#8B5CF6"
-                        badge_html   = (
-                            f"<div style=\"display:inline-block;"
-                            f"background:{badge_color};color:white;"
-                            f"font-size:9px;font-weight:600;"
+
+                        st.markdown(
+                            f"<div style=\"display:inline-block;background:{badge_color};"
+                            f"color:white;font-size:9px;font-weight:600;"
                             f"padding:3px 8px;border-radius:20px;"
                             f"margin-bottom:10px;letter-spacing:0.5px\">"
-                            f"{mode_badge.upper()}</div>"
+                            f"{mode_badge.upper()}</div>",
+                            unsafe_allow_html=True
                         )
-                        st.markdown(badge_html, unsafe_allow_html=True)
-                        """, unsafe_allow_html=True)
-                          <div style='font-size:13px;color:white'>
-                            {entry["timestamp"]}</div>
-                        </div>
-                        <div style='margin-bottom:12px'>
-                          <div style='font-size:11px;color:#888'>
-                            BRAND TYPE</div>
-                          <div style='font-size:13px;color:white;
-                                      text-transform:capitalize'>
-                            {entry["brand_type"]}</div>
-                        </div>
-                        <div style='margin-bottom:12px'>
-                          <div style='font-size:11px;color:#888'>LOCATION</div>
-                          <div style='font-size:12px;color:#9ecfc0'>
-                            {entry["lat"]:.4f}N, {entry["lng"]:.4f}E</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                        st.markdown(f"""
-                        <div style='background:#0A2E26;border-radius:8px;
-                                    padding:14px;text-align:center'>
-                          <div style='font-size:36px;font-weight:700;
-                                      color:{vc}'>{entry["total_score"]}</div>
-                          <div style='font-size:11px;color:#9ecfc0'>
-                            out of 100</div>
-                          <div style='font-size:13px;font-weight:600;
-                                      color:{vc};margin-top:4px'>
-                            {entry["verdict"].upper()} SITE</div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown(
+                            f"<div style=\"margin-bottom:10px\">"
+                            f"<div style=\"font-size:11px;color:#888\">SCORED ON</div>"
+                            f"<div style=\"font-size:13px;color:white\">{entry['timestamp']}</div>"
+                            f"</div>"
+                            f"<div style=\"margin-bottom:10px\">"
+                            f"<div style=\"font-size:11px;color:#888\">BRAND TYPE</div>"
+                            f"<div style=\"font-size:13px;color:white;text-transform:capitalize\">{entry['brand_type']}</div>"
+                            f"</div>"
+                            f"<div style=\"margin-bottom:10px\">"
+                            f"<div style=\"font-size:11px;color:#888\">LOCATION</div>"
+                            f"<div style=\"font-size:12px;color:#9ecfc0\">{entry['lat']:.4f}N, {entry['lng']:.4f}E</div>"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
+                        st.markdown(
+                            f"<div style=\"background:#0A2E26;border-radius:8px;"
+                            f"padding:14px;text-align:center\">"
+                            f"<div style=\"font-size:36px;font-weight:700;color:{vc}\">{entry['total_score']}</div>"
+                            f"<div style=\"font-size:11px;color:#9ecfc0\">out of 100</div>"
+                            f"<div style=\"font-size:13px;font-weight:600;color:{vc};margin-top:4px\">"
+                            f"{entry['verdict'].upper()} SITE</div>"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
 
                     with col_scores:
                         st.markdown("**Score breakdown**")
                         for label, key in [
-                            ("Demand",         "demand"),
-                            ("Footfall",       "footfall"),
-                            ("Competition",    "competition"),
-                            ("Accessibility",  "accessibility"),
-                            ("Catchment",      "catchment"),
-                            ("Spending Power", "spending_power"),
+                            ("Demand",        "demand"),
+                            ("Footfall",      "footfall"),
+                            ("Competition",   "competition"),
+                            ("Accessibility", "accessibility"),
+                            ("Catchment",     "catchment"),
+                            ("Spending Power","spending_power"),
                         ]:
                             s   = scores.get(key, 0)
-                            col = "#1D9E75" if s>=65 else \
-                                  "#BA7517" if s>=45 else "#C0392B"
+                            col = "#1D9E75" if s>=65 else "#BA7517" if s>=45 else "#C0392B"
                             bar = int(s)
-                            st.markdown(f"""
-                            <div style='margin-bottom:8px'>
-                              <div style='display:flex;
-                                          justify-content:space-between;
-                                          margin-bottom:3px'>
-                                <span style='font-size:11px;
-                                             color:#888'>{label}</span>
-                                <span style='font-size:12px;font-weight:700;
-                                             color:{col}'>{s}</span>
-                              </div>
-                              <div style='background:#222;border-radius:3px;
-                                          height:5px'>
-                                <div style='width:{bar}%;background:{col};
-                                            height:5px;border-radius:3px'>
-                                </div>
-                              </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            st.markdown(
+                                f"<div style=\"margin-bottom:8px\">"
+                                f"<div style=\"display:flex;justify-content:space-between;margin-bottom:3px\">"
+                                f"<span style=\"font-size:11px;color:#888\">{label}</span>"
+                                f"<span style=\"font-size:12px;font-weight:700;color:{col}\">{s}</span>"
+                                f"</div>"
+                                f"<div style=\"background:#222;border-radius:3px;height:5px\">"
+                                f"<div style=\"width:{bar}%;background:{col};height:5px;border-radius:3px\">"
+                                f"</div></div></div>",
+                                unsafe_allow_html=True
+                            )
 
                     # Re-score button
                     if st.button(
