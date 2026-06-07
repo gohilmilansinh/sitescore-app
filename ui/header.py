@@ -130,35 +130,72 @@ def render_header() -> None:
     )
 
     # Start header container
-    st.markdown("<div class='site-header'>", unsafe_allow_html=True)
-
     st.markdown(
-        """
-        <div class='header-label'>
-            RETAIL LOCATION INTELLIGENCE
+            """
+        <style>
+        .site-header {
+            background: linear-gradient(90deg,#0A2E26,#003D35);
+            border-radius: 18px;
+            padding: 30px 40px;
+            margin-bottom: 24px;
+        }
+
+        .logo-row {
+            display:flex;
+            align-items:center;
+            gap:18px;
+        }
+
+        .logo-row img {
+            width:90px;
+            height:auto;
+        }
+
+        .header-label {
+            color:#9ecfc0;
+            font-size:11px;
+            letter-spacing:3px;
+            margin-bottom:12px;
+        }
+
+        .header-title {
+            color:white;
+            font-size:42px;
+            font-weight:700;
+            line-height:1;
+        }
+
+        .header-subtitle {
+            color:#9ecfc0;
+            font-size:16px;
+            margin-top:8px;
+        }
+        </style>
+
+        <div class="site-header">
+
+            <div class="header-label">
+                RETAIL LOCATION INTELLIGENCE
+            </div>
+
+            <div class="logo-row">
+
+                <img src="https://github.com/gohilmilansinh/sitescore-app/blob/main/assets/logo.png">
+
+                <div>
+                    <div class="header-title">
+                        SiteIQ
+                    </div>
+
+                    <div class="header-subtitle">
+                        Data-driven retail location intelligence for Gujarat
+                    </div>
+                </div>
+
+            </div>
+
         </div>
         """,
-        unsafe_allow_html=True,
-    )
-
-    col1, col2 = st.columns([1, 12])
-
-    with col1:
-        st.image("assets/logo.png", width=60)
-
-    with col2:
-        st.markdown(
-            """
-            <div class='header-title'>
-                SiteIQ
-            </div>
-
-            <div class='header-subtitle'>
-                Data-driven retail location intelligence for Gujarat
-            </div>
-            """,
-            unsafe_allow_html=True,
+            unsafe_allow_html=True
         )
-
-    st.markdown("</div>", unsafe_allow_html=True)
 
