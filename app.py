@@ -61,6 +61,7 @@ if mode == "Single Site":
 
     GKEY = os.environ.get("GOOGLE_API_KEY", "")
 
+    # Read address from query params on every rerun
     if "address" in st.query_params:
         st.session_state.search_address = st.query_params["address"]
 
@@ -78,7 +79,7 @@ if mode == "Single Site":
       * {{ box-sizing:border-box;margin:0;padding:0 }}
       body {{ background:transparent;overflow:visible }}
       .row {{ display:flex;gap:6px;align-items:center;position:relative;z-index:9999; }}
-      #search-wrapper {{ flex:0 0 75%;position:relative; }}
+      #search-wrapper {{ flex:1;position:relative; }}
       #pac-input {{
         width:100%;padding:10px 32px 10px 12px;font-size:13px;
         border:1px solid #1D9E75;border-radius:8px;background:#0d1f1a;
@@ -104,14 +105,10 @@ if mode == "Single Site":
         min-height:14px;margin-top:4px;
       }}
       .pac-container {{
-        z-index:2147483647 !important;
-        position:absolute !important;
-        background:#0d1f1a !important;
-        border:1px solid #1D9E75 !important;
-        border-radius:6px !important;
-        font-family:sans-serif !important;
-        margin-top:2px !important;
-        box-shadow:0 4px 20px rgba(0,0,0,0.6) !important;
+        z-index:2147483647 !important;position:absolute !important;
+        background:#0d1f1a !important;border:1px solid #1D9E75 !important;
+        border-radius:6px !important;font-family:sans-serif !important;
+        margin-top:2px !important;box-shadow:0 4px 20px rgba(0,0,0,0.6) !important;
       }}
       .pac-item {{
         color:#ccc !important;background:#0d1f1a !important;
@@ -163,7 +160,7 @@ if mode == "Single Site":
       }});
       if (input.value) clrBtn.style.display = 'block';
 
-      // Expand iframe when suggestions appear so they aren't clipped
+      // Expand iframe when suggestions appear
       const observer = new MutationObserver(function() {{
         const pac = document.querySelector('.pac-container');
         if (pac && pac.children.length > 0 &&
@@ -179,7 +176,6 @@ if mode == "Single Site":
         attributes: true, attributeFilter: ['style']
       }});
 
-      // Also shrink back when input loses focus
       input.addEventListener('blur', function() {{
         setTimeout(function() {{
           if (!mapVisible) {{
@@ -218,7 +214,8 @@ if mode == "Single Site":
         const url = new URL(window.parent.location.href);
         url.searchParams.set('address', addr);
         url.searchParams.set('do_score', '1');
-        window.parent.location.href = url.toString();
+        window.parent.history.replaceState({{}}, '', url);
+        window.parent.postMessage({{ type:'streamlit:rerun' }}, '*');
       }}
 
       function initMap() {{
@@ -253,8 +250,10 @@ if mode == "Single Site":
             {{ elementType:'geometry', stylers:[{{ color:'#1a2a1a' }}] }},
             {{ elementType:'labels.text.fill', stylers:[{{ color:'#9ecfc0' }}] }},
             {{ elementType:'labels.text.stroke', stylers:[{{ color:'#0d1f1a' }}] }},
-            {{ featureType:'road', elementType:'geometry', stylers:[{{ color:'#2a4a2a' }}] }},
-            {{ featureType:'water', elementType:'geometry', stylers:[{{ color:'#0d1f2a' }}] }}
+            {{ featureType:'road', elementType:'geometry',
+               stylers:[{{ color:'#2a4a2a' }}] }},
+            {{ featureType:'water', elementType:'geometry',
+               stylers:[{{ color:'#0d1f2a' }}] }}
           ]
         }});
         map.addListener('click', function(e) {{
@@ -302,22 +301,25 @@ if mode == "Single Site":
 
     components.html(search_html, height=52, scrolling=False)
 
-    address = st.session_state.get("search_address", "")
-
-    if address:
+    # Show selected address
+    if current_address:
         st.markdown(
             f"<div style='font-size:12px;color:#1D9E75;margin-top:-8px;"
-            f"margin-bottom:6px'>📍 {address}</div>",
+            f"margin-bottom:6px'>📍 {current_address}</div>",
             unsafe_allow_html=True,
         )
 
-    # Only score when do_score param is set (Score button clicked)
+    # Score when do_score param is present
     do_score = st.query_params.get("do_score") == "1"
     if do_score:
         try:
-            st.query_params.pop("do_score")
+            params = dict(st.query_params)
+            params.pop("do_score", None)
+            st.query_params.update(params)
         except Exception:
             pass
+
+        address = st.session_state.get("search_address", "")
         if address.strip():
             with st.spinner("Analysing location — takes 20–30 seconds..."):
                 result = score_site(address.strip(), brand_type)
