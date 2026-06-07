@@ -58,7 +58,7 @@ if st.session_state.compared is not None:
 # SINGLE SITE MODE
 # ════════════════════════════════════════════════════════════
 if mode == "Single Site":
-    
+
     GKEY = os.environ.get("GOOGLE_API_KEY", "")
 
     if "address" in st.query_params:
@@ -66,7 +66,6 @@ if mode == "Single Site":
 
     current_address = st.session_state.get("search_address", "")
 
-    # Get brand type first via a hidden selectbox
     brand_type = st.selectbox(
         "Type",
         ["restaurant", "pharmacy", "supermarket", "bank", "school"],
@@ -78,98 +77,66 @@ if mode == "Single Site":
     <style>
       * {{ box-sizing:border-box;margin:0;padding:0 }}
       body {{ background:transparent;overflow:visible }}
-
-      .row {{
-        display:flex;gap:6px;align-items:center;
-        position:relative;z-index:9999;
-      }}
-
-      #search-wrapper {{
-        flex:1;position:relative;
-      }}
-
+      .row {{ display:flex;gap:6px;align-items:center;position:relative;z-index:9999; }}
+      #search-wrapper {{ flex:0 0 75%;position:relative; }}
       #pac-input {{
-        width:100%;padding:10px 32px 10px 12px;
-        font-size:13px;border:1px solid #1D9E75;
-        border-radius:8px;background:#0d1f1a;
+        width:100%;padding:10px 32px 10px 12px;font-size:13px;
+        border:1px solid #1D9E75;border-radius:8px;background:#0d1f1a;
         color:white;outline:none;font-family:sans-serif;
       }}
       #pac-input::placeholder {{ color:#888; }}
-
       #clear-btn {{
-        position:absolute;right:8px;top:50%;
-        transform:translateY(-50%);background:none;
-        border:none;color:#888;font-size:16px;
+        position:absolute;right:8px;top:50%;transform:translateY(-50%);
+        background:none;border:none;color:#888;font-size:16px;
         cursor:pointer;display:none;line-height:1;
       }}
-
-      #map-btn {{
-        background:#0A2E26;color:#9ecfc0;
-        border:1px solid #1D9E75;padding:9px 10px;
-        border-radius:8px;cursor:pointer;
-        font-size:16px;flex-shrink:0;line-height:1;
-      }}
-      #map-btn:hover {{ background:#1a4a3a; }}
-
       #map-container {{
-        margin-top:6px;height:260px;
-        border-radius:8px;border:1px solid #333;
-        display:none;position:relative;z-index:1;
+        margin-top:6px;height:260px;border-radius:8px;
+        border:1px solid #333;display:none;position:relative;z-index:1;
       }}
       #map-div {{ height:100%;width:100%;border-radius:8px; }}
-
       #hint {{
-        padding:6px;background:#0d1f1a;
-        border-top:1px solid #333;font-size:10px;
-        color:#9ecfc0;text-align:center;
-        font-family:sans-serif;
+        padding:6px;background:#0d1f1a;border-top:1px solid #333;
+        font-size:10px;color:#9ecfc0;text-align:center;font-family:sans-serif;
       }}
-
       #status {{
-        font-size:11px;color:#1D9E75;
-        font-family:sans-serif;min-height:14px;
-        margin-top:4px;
+        font-size:11px;color:#1D9E75;font-family:sans-serif;
+        min-height:14px;margin-top:4px;
       }}
-
-      /* Force autocomplete dropdown above everything */
       .pac-container {{
-        z-index:2147483647 !important;
-        position:fixed !important;
-        background:#0d1f1a !important;
-        border:1px solid #1D9E75 !important;
-        border-radius:6px !important;
-        font-family:sans-serif !important;
+        z-index:2147483647 !important;position:fixed !important;
+        background:#0d1f1a !important;border:1px solid #1D9E75 !important;
+        border-radius:6px !important;font-family:sans-serif !important;
       }}
       .pac-item {{
-        color:#ccc !important;
-        background:#0d1f1a !important;
-        padding:8px 12px !important;
-        font-size:13px !important;
-        cursor:pointer !important;
-        border-top:1px solid #1a3a2a !important;
+        color:#ccc !important;background:#0d1f1a !important;
+        padding:8px 12px !important;font-size:13px !important;
+        cursor:pointer !important;border-top:1px solid #1a3a2a !important;
       }}
-      .pac-item:hover {{
-        background:#1a4a3a !important;
-      }}
-      .pac-item-query {{
-        color:white !important;
-        font-size:13px !important;
-      }}
+      .pac-item:hover {{ background:#1a4a3a !important; }}
+      .pac-item-query {{ color:white !important;font-size:13px !important; }}
       .pac-matched {{ color:#1D9E75 !important; }}
     </style>
 
     <div class='row'>
       <div id='search-wrapper'>
-        <input
-          id='pac-input'
-          type='text'
+        <input id='pac-input' type='text'
           placeholder='Search location in Gujarat...'
-          value='{current_address}'
-          autocomplete='off'
-        />
+          value='{current_address}' autocomplete='off'/>
         <button id='clear-btn' onclick='clearInput()'>×</button>
       </div>
-      <button id='map-btn' onclick='toggleMap()' title='Pick on map'>📍</button>
+      <button onclick='toggleMap()'
+        style='flex:0 0 auto;background:#0A2E26;color:#9ecfc0;
+               border:1px solid #1D9E75;padding:9px 10px;border-radius:8px;
+               cursor:pointer;font-size:16px;line-height:1'
+        title='Pick on map'>📍</button>
+      <button onclick='scoreThisSite()'
+        style='flex:0 0 auto;background:#E74C3C;color:white;border:none;
+               padding:10px 14px;border-radius:8px;cursor:pointer;
+               font-size:13px;font-weight:600;font-family:sans-serif;
+               white-space:nowrap'>
+        Score →
+      </button>
     </div>
 
     <div id='map-container'>
@@ -205,13 +172,27 @@ if mode == "Single Site":
           (addr.length > 60 ? '...' : '');
         const url = new URL(window.parent.location.href);
         url.searchParams.set('address', addr);
+        url.searchParams.delete('do_score');
         window.parent.history.replaceState({{}}, '', url);
         window.parent.postMessage({{ type:'streamlit:rerun' }}, '*');
       }}
 
+      function scoreThisSite() {{
+        const addr = input.value.trim();
+        if (!addr) {{
+          status.textContent = 'Please enter an address first.';
+          status.style.color = '#E74C3C';
+          return;
+        }}
+        status.textContent = 'Scoring...';
+        const url = new URL(window.parent.location.href);
+        url.searchParams.set('address', addr);
+        url.searchParams.set('do_score', '1');
+        window.parent.location.href = url.toString();
+      }}
+
       function initMap() {{
         geocoder = new google.maps.Geocoder();
-
         autocomplete = new google.maps.places.Autocomplete(input, {{
           componentRestrictions: {{ country:'in' }},
           bounds: new google.maps.LatLngBounds(
@@ -221,7 +202,6 @@ if mode == "Single Site":
           strictBounds: false,
           fields: ['formatted_address','geometry','name']
         }});
-
         autocomplete.addListener('place_changed', function() {{
           const place = autocomplete.getPlace();
           if (!place.geometry) return;
@@ -233,56 +213,40 @@ if mode == "Single Site":
             placeMarker(place.geometry.location, addr);
           }}
         }});
-
-        map = new google.maps.Map(
-          document.getElementById('map-div'), {{
-            center: {{ lat:23.0225, lng:72.5714 }},
-            zoom: 12,
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-            styles: [
-              {{ elementType:'geometry',
-                 stylers:[{{ color:'#1a2a1a' }}] }},
-              {{ elementType:'labels.text.fill',
-                 stylers:[{{ color:'#9ecfc0' }}] }},
-              {{ elementType:'labels.text.stroke',
-                 stylers:[{{ color:'#0d1f1a' }}] }},
-              {{ featureType:'road',elementType:'geometry',
-                 stylers:[{{ color:'#2a4a2a' }}] }},
-              {{ featureType:'water',elementType:'geometry',
-                 stylers:[{{ color:'#0d1f2a' }}] }}
-            ]
-          }}
-        );
-
+        map = new google.maps.Map(document.getElementById('map-div'), {{
+          center: {{ lat:23.0225, lng:72.5714 }},
+          zoom: 12,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          styles: [
+            {{ elementType:'geometry', stylers:[{{ color:'#1a2a1a' }}] }},
+            {{ elementType:'labels.text.fill', stylers:[{{ color:'#9ecfc0' }}] }},
+            {{ elementType:'labels.text.stroke', stylers:[{{ color:'#0d1f1a' }}] }},
+            {{ featureType:'road', elementType:'geometry', stylers:[{{ color:'#2a4a2a' }}] }},
+            {{ featureType:'water', elementType:'geometry', stylers:[{{ color:'#0d1f2a' }}] }}
+          ]
+        }});
         map.addListener('click', function(e) {{
-          geocoder.geocode({{ location:e.latLng }},
-            function(results, s) {{
-              const addr = (s === 'OK' && results[0])
-                ? results[0].formatted_address
-                : e.latLng.lat().toFixed(6) + ', ' +
-                  e.latLng.lng().toFixed(6) + ', Gujarat, India';
-              placeMarker(e.latLng, addr);
-              setAddress(addr);
-            }}
-          );
+          geocoder.geocode({{ location:e.latLng }}, function(results, s) {{
+            const addr = (s === 'OK' && results[0])
+              ? results[0].formatted_address
+              : e.latLng.lat().toFixed(6) + ', ' +
+                e.latLng.lng().toFixed(6) + ', Gujarat, India';
+            placeMarker(e.latLng, addr);
+            setAddress(addr);
+          }});
         }});
       }}
 
       function placeMarker(position, addr) {{
         if (marker) marker.setMap(null);
         marker = new google.maps.Marker({{
-          position: position,
-          map: map,
-          title: addr,
+          position: position, map: map, title: addr,
           icon: {{
             path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: '#1D9E75',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 2
+            scale: 10, fillColor: '#1D9E75', fillOpacity: 1,
+            strokeColor: '#ffffff', strokeWeight: 2
           }}
         }});
       }}
@@ -301,11 +265,9 @@ if mode == "Single Site":
         }}
       }}
     </script>
-
     <script
       src="https://maps.googleapis.com/maps/api/js?key={GKEY}&libraries=places&callback=initMap"
-      async defer>
-    </script>
+      async defer></script>
     """
 
     components.html(search_html, height=52, scrolling=False)
@@ -319,11 +281,16 @@ if mode == "Single Site":
             unsafe_allow_html=True,
         )
 
-    if st.button("Score This Site", type="primary", use_container_width=True):
+    # Only score when do_score param is set (Score button clicked)
+    do_score = st.query_params.get("do_score") == "1"
+    if do_score:
+        try:
+            st.query_params.pop("do_score")
+        except Exception:
+            pass
         if address.strip():
             with st.spinner("Analysing location — takes 20–30 seconds..."):
                 result = score_site(address.strip(), brand_type)
-
             if not result:
                 st.session_state.result = None
                 st.error("Something went wrong. Please try again.")
@@ -343,25 +310,6 @@ if mode == "Single Site":
         if not scores:
             st.error("Result data is incomplete. Please score again.")
             st.stop()
-
-        total = result["total_score"]
-        verdict = result["verdict"]
-        lat, lng = result["lat"], result["lng"]
-        vc = (
-            "#1D9E75"
-            if verdict == "Strong"
-            else "#BA7517" if verdict == "Moderate" else "#C0392B"
-        )
-
-        benchmark = get_category_context(total, brand_type)
-        stats = benchmark["stats"]
-        percentile = benchmark["percentile"]
-        bar_color = (
-            "#1D9E75"
-            if percentile >= 65
-            else "#BA7517" if percentile >= 40 else "#C0392B"
-        )
-
         render_score_breakdown(result, brand_type)
 
 
