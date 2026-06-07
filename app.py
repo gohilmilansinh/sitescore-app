@@ -104,9 +104,14 @@ if mode == "Single Site":
         min-height:14px;margin-top:4px;
       }}
       .pac-container {{
-        z-index:2147483647 !important;position:fixed !important;
-        background:#0d1f1a !important;border:1px solid #1D9E75 !important;
-        border-radius:6px !important;font-family:sans-serif !important;
+        z-index:2147483647 !important;
+        position:absolute !important;
+        background:#0d1f1a !important;
+        border:1px solid #1D9E75 !important;
+        border-radius:6px !important;
+        font-family:sans-serif !important;
+        margin-top:2px !important;
+        box-shadow:0 4px 20px rgba(0,0,0,0.6) !important;
       }}
       .pac-item {{
         color:#ccc !important;background:#0d1f1a !important;
@@ -157,6 +162,31 @@ if mode == "Single Site":
         clrBtn.style.display = this.value ? 'block' : 'none';
       }});
       if (input.value) clrBtn.style.display = 'block';
+
+      // Expand iframe when suggestions appear so they aren't clipped
+      const observer = new MutationObserver(function() {{
+        const pac = document.querySelector('.pac-container');
+        if (pac && pac.children.length > 0 &&
+            pac.style.display !== 'none') {{
+          window.frameElement.style.height =
+            (52 + pac.offsetHeight + 10) + 'px';
+        }} else if (!mapVisible) {{
+          window.frameElement.style.height = '52px';
+        }}
+      }});
+      observer.observe(document.body, {{
+        childList: true, subtree: true,
+        attributes: true, attributeFilter: ['style']
+      }});
+
+      // Also shrink back when input loses focus
+      input.addEventListener('blur', function() {{
+        setTimeout(function() {{
+          if (!mapVisible) {{
+            window.frameElement.style.height = '52px';
+          }}
+        }}, 200);
+      }});
 
       function clearInput() {{
         input.value = '';
