@@ -2,7 +2,6 @@ import streamlit as st
 import base64
 
 def render_header():
-    # Load and encode logo.png to Base64
     with open("assets/logo.png", "rb") as img_file:
         encoded_logo = base64.b64encode(img_file.read()).decode()
 
@@ -20,18 +19,20 @@ def render_header():
         font-weight: 600;
         letter-spacing: 2px;
         margin-bottom: 12px;
+        margin-left: 0;      /* ensure no indent */
     }}
     .header-logo {{
         width: 280px;
         height: auto;
         display: block;
         margin-bottom: 10px;
+        margin-left: 0;      /* ensure no indent */
     }}
     .subtitle {{
         color: #9ecfc0;
         font-size: 14px;
         margin-top: 10px;
-        margin-left: 18px;
+        margin-left: 0;      /* was 18px – removed to align left */
     }}
     </style>
 
