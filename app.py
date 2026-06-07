@@ -321,6 +321,7 @@ if mode == "Single Site":
     """
 
     components.html(search_html, height=52, scrolling=False)
+    st.write("Query Params:", dict(st.query_params))
     auto_score = st.query_params.get("do_score")
 
 if auto_score == "1":
