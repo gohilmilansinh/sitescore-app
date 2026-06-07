@@ -8,7 +8,9 @@ from reportlab.lib import colors
 from reportlab.lib.units import mm
 
 
-def generate_report(result: Dict[str, Any], output_path: str = "site_report.pdf") -> None:
+def generate_report(
+    result: Dict[str, Any], output_path: str = "site_report.pdf"
+) -> None:
     scores = result["scores"]
     total = result["total_score"]
     W, H = A4
@@ -20,25 +22,38 @@ def generate_report(result: Dict[str, Any], output_path: str = "site_report.pdf"
     C_LGREY = colors.HexColor("#F5F5F5")
     C_GREY = colors.HexColor("#888888")
     C_LTGRN = colors.HexColor("#F0FAF6")
-    C_WHITE = colors.white
     C_LINE = colors.HexColor("#EEEEEE")
 
-    score_color = C_GREEN if total >= 65 else C_AMBER if total >= 45 else C_RED
-    verdict = "STRONG SITE" if total >= 65 else "MODERATE SITE" if total >= 45 else "WEAK SITE"
-    recommend = (
-        "Proceed to lease negotiation"
-        if total >= 65
-        else "Address risk flags before committing"
-        if total >= 45
-        else "Seek alternative locations"
-    )
+    # score_color = C_GREEN if total >= 65 else C_AMBER if total >= 45 else C_RED
+    # verdict = (
+    #     "STRONG SITE"
+    #     if total >= 65
+    #     else "MODERATE SITE" if total >= 45 else "WEAK SITE"
+    # )
+    # recommend = (
+    #     "Proceed to lease negotiation"
+    #     if total >= 65
+    #     else (
+    #         "Address risk flags before committing"
+    #         if total >= 45
+    #         else "Seek alternative locations"
+    #     )
+    # )
 
     LM, RM = 18 * mm, 18 * mm
     CW = W - LM - RM
 
     c = canvas.Canvas(output_path, pagesize=A4)
 
-    def text(x: float, y: float, txt: str, size: int = 11, bold: bool = False, color=colors.black, align: str = "left") -> None:
+    def text(
+        x: float,
+        y: float,
+        txt: str,
+        size: int = 11,
+        bold: bool = False,
+        color=colors.black,
+        align: str = "left",
+    ) -> None:
         c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
         c.setFillColor(color)
         if align == "center":
@@ -48,7 +63,15 @@ def generate_report(result: Dict[str, Any], output_path: str = "site_report.pdf"
         else:
             c.drawString(x, y, str(txt))
 
-    def rect(x: float, y: float, w: float, h: float, fill=C_LGREY, stroke=None, radius: int = 3) -> None:
+    def rect(
+        x: float,
+        y: float,
+        w: float,
+        h: float,
+        fill=C_LGREY,
+        stroke=None,
+        radius: int = 3,
+    ) -> None:
         c.setFillColor(fill)
         if stroke:
             c.setStrokeColor(stroke)
@@ -98,7 +121,14 @@ def generate_report(result: Dict[str, Any], output_path: str = "site_report.pdf"
             lines.append(line)
         return lines
 
-    def body_text(x: float, y: float, txt: str, size: int = 10, color=colors.HexColor("#444444"), max_width: float | None = None) -> float:
+    def body_text(
+        x: float,
+        y: float,
+        txt: str,
+        size: int = 10,
+        color=colors.HexColor("#444444"),
+        max_width: float | None = None,
+    ) -> float:
         mw = max_width or CW
         lines = wrap_text(txt, mw, size)
         c.setFont("Helvetica", size)
@@ -114,18 +144,50 @@ def generate_report(result: Dict[str, Any], output_path: str = "site_report.pdf"
     y -= 24
 
     rows = [
-        ("Demand Potential", scores["demand"], 0.25, "Residential buildings within 1km  (OpenStreetMap)"),
-        ("Footfall Proxy", scores["footfall"], 0.25, "Anchor stores within 500m: supermarket, hospital, school, bank, transit"),
-        ("Competition", scores["competition"], 0.20, "QSR competitor density within 500m  (higher = less competition)"),
-        ("Accessibility", scores["accessibility"], 0.20, "Road intersection density within 300m  (OSM network)"),
-        ("Catchment Quality", scores["catchment"], 0.10, "Commercial activity within 1km: shops, cafes, services"),
-        ("Spending Power", scores.get("spending_power", 50), 0.15, "Average price level of nearby places within 1km (Google Places)"),
+        (
+            "Demand Potential",
+            scores["demand"],
+            0.25,
+            "Residential buildings within 1km  (OpenStreetMap)",
+        ),
+        (
+            "Footfall Proxy",
+            scores["footfall"],
+            0.25,
+            "Anchor stores within 500m: supermarket, hospital, school, bank, transit",
+        ),
+        (
+            "Competition",
+            scores["competition"],
+            0.20,
+            "QSR competitor density within 500m  (higher = less competition)",
+        ),
+        (
+            "Accessibility",
+            scores["accessibility"],
+            0.20,
+            "Road intersection density within 300m  (OSM network)",
+        ),
+        (
+            "Catchment Quality",
+            scores["catchment"],
+            0.10,
+            "Commercial activity within 1km: shops, cafes, services",
+        ),
+        (
+            "Spending Power",
+            scores.get("spending_power", 50),
+            0.15,
+            "Average price level of nearby places within 1km (Google Places)",
+        ),
     ]
 
     for label, score, weight, note in rows:
         sc = C_GREEN if score >= 65 else C_AMBER if score >= 45 else C_RED
         text(LM, y, label, size=11, bold=True, color=C_DARK)
-        text(W - RM, y, f"wt: {int(weight * 100)}%", size=9, color=C_GREY, align="right")
+        text(
+            W - RM, y, f"wt: {int(weight * 100)}%", size=9, color=C_GREY, align="right"
+        )
         y -= 16
         bar_w = CW - 42
         score_bar(LM, y - 2, bar_w, 10, score)
@@ -138,8 +200,20 @@ def generate_report(result: Dict[str, Any], output_path: str = "site_report.pdf"
 
     y -= 6
     rect(LM, y - 14, CW, 36, fill=C_LTGRN, radius=4)
-    text(LM + 10, y + 8, "Note: Weights are equal-initialised (v1). Will be recalibrated via regression", size=8, color=colors.HexColor("#0A6E50"))
-    text(LM + 10, y - 4, "once 20+ outlet performance data points are collected.", size=8, color=colors.HexColor("#0A6E50"))
+    text(
+        LM + 10,
+        y + 8,
+        "Note: Weights are equal-initialised (v1). Will be recalibrated via regression",
+        size=8,
+        color=colors.HexColor("#0A6E50"),
+    )
+    text(
+        LM + 10,
+        y - 4,
+        "once 20+ outlet performance data points are collected.",
+        size=8,
+        color=colors.HexColor("#0A6E50"),
+    )
 
     c.showPage()
     c.save()

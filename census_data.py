@@ -46,7 +46,7 @@ def estimate_population(
         dist = haversine_distance(lat, lng, ward["lat"], ward["lng"])
         if dist <= 3.0:
             overlap = max(0.0, 1.0 - (dist / 3.0))
-            weight = overlap ** 2
+            weight = overlap**2
 
             total_population += ward["population"] * weight
             total_households += ward["households"] * weight

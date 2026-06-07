@@ -1,9 +1,3 @@
-import tempfile
-from pathlib import Path
-from types import SimpleNamespace
-
-import pytest
-
 import scorer
 
 
@@ -44,7 +38,9 @@ def test_score_competition_with_places(monkeypatch):
 def test_score_spending_power_calculates_average(monkeypatch):
     class DummyGMAPS:
         def places_nearby(self, *args, **kwargs):
-            return {"results": [{"price_level": 1}, {"price_level": 3}, {"price_level": 2}]}
+            return {
+                "results": [{"price_level": 1}, {"price_level": 3}, {"price_level": 2}]
+            }
 
     monkeypatch.setattr(scorer, "gmaps", DummyGMAPS())
     score, data = scorer.score_spending_power(23.0, 72.0)
@@ -112,17 +108,27 @@ class DummyGMAPS:
         return {"results": self._results}
 
     def geocode(self, address):
-        return [{"geometry": {"location": {"lat": 23.0, "lng": 72.0}},
-                 "address_components": [{"types": ["administrative_area_level_1"], "long_name": "Gujarat"}],
-                 "formatted_address": "Ahmedabad, Gujarat, India"}]
+        return [
+            {
+                "geometry": {"location": {"lat": 23.0, "lng": 72.0}},
+                "address_components": [
+                    {"types": ["administrative_area_level_1"], "long_name": "Gujarat"}
+                ],
+                "formatted_address": "Ahmedabad, Gujarat, India",
+            }
+        ]
 
 
 def test_score_demand_fallback(monkeypatch):
-    monkeypatch.setattr(scorer, "score_population", lambda lat, lng: (0.0, {"estimated_population": 0}))
+    monkeypatch.setattr(
+        scorer, "score_population", lambda lat, lng: (0.0, {"estimated_population": 0})
+    )
+
     class DummyOx:
         @staticmethod
         def features_from_point(point, tags, dist):
             return [1] * 10
+
     monkeypatch.setattr(scorer, "ox", DummyOx)
 
     score, data = scorer.score_demand(23.0, 72.0)
@@ -158,7 +164,11 @@ def test_score_site_computes_total(monkeypatch):
     monkeypatch.setattr(scorer, "cached_demand", lambda lat, lng: (80.0, {}))
     monkeypatch.setattr(scorer, "cached_footfall", lambda lat, lng, bt: (60.0, {}))
     monkeypatch.setattr(scorer, "cached_competition", lambda lat, lng, bt: (70.0, []))
-    monkeypatch.setattr(scorer, "cached_accessibility", lambda lat, lng: (50.0, {"intersections": 5, "total_nodes": 20}))
+    monkeypatch.setattr(
+        scorer,
+        "cached_accessibility",
+        lambda lat, lng: (50.0, {"intersections": 5, "total_nodes": 20}),
+    )
     monkeypatch.setattr(scorer, "cached_catchment", lambda lat, lng: (40.0, 5))
     monkeypatch.setattr(scorer, "cached_spending", lambda lat, lng: (30.0, {}))
 
@@ -169,6 +179,7 @@ def test_score_site_computes_total(monkeypatch):
         + 70 * scorer.WEIGHTS["competition"]
         + 50 * scorer.WEIGHTS["accessibility"]
         + 40 * scorer.WEIGHTS["catchment"]
-        + 30 * scorer.WEIGHTS["spending_power"], 1
+        + 30 * scorer.WEIGHTS["spending_power"],
+        1,
     )
     assert result["verdict"] in {"Strong", "Moderate", "Weak"}

@@ -26,11 +26,15 @@ def cached_demand(lat: float, lng: float) -> Tuple[float, Dict[str, Any]]:
     return score_demand(lat, lng)
 
 
-def cached_footfall(lat: float, lng: float, brand_type: str) -> Tuple[float, Dict[str, int]]:
+def cached_footfall(
+    lat: float, lng: float, brand_type: str
+) -> Tuple[float, Dict[str, int]]:
     return score_footfall(lat, lng, brand_type)
 
 
-def cached_competition(lat: float, lng: float, brand_type: str) -> Tuple[float, List[Dict[str, Any]]]:
+def cached_competition(
+    lat: float, lng: float, brand_type: str
+) -> Tuple[float, List[Dict[str, Any]]]:
     return score_competition(lat, lng, brand_type)
 
 
@@ -130,7 +134,9 @@ def score_demand(lat: float, lng: float) -> Tuple[float, Dict[str, Any]]:
         return 30.0, {"method": "fallback", "population": 0, "households": 0}
 
 
-def score_footfall(lat: float, lng: float, brand_type: str = "restaurant") -> Tuple[float, Dict[str, int]]:
+def score_footfall(
+    lat: float, lng: float, brand_type: str = "restaurant"
+) -> Tuple[float, Dict[str, int]]:
     if gmaps is None:
         logger.warning("No Google Maps client available for footfall scoring.")
         return 50.0, {}
@@ -150,7 +156,9 @@ def score_footfall(lat: float, lng: float, brand_type: str = "restaurant") -> Tu
     return round(min(total / 10 * 100, 100), 1), found
 
 
-def score_competition(lat: float, lng: float, brand_type: str = "restaurant") -> Tuple[float, List[Dict[str, Any]]]:
+def score_competition(
+    lat: float, lng: float, brand_type: str = "restaurant"
+) -> Tuple[float, List[Dict[str, Any]]]:
     keyword = BRAND_KEYWORDS.get(brand_type, BRAND_KEYWORDS["restaurant"])
 
     if gmaps is None:
@@ -182,7 +190,9 @@ def score_competition(lat: float, lng: float, brand_type: str = "restaurant") ->
         rating = place.get("rating", 3.0)
         name = place.get("name", "Unknown")
 
-        review_weight = min(math.log10(review_count) / 3.0, 1.0) if review_count > 0 else 0.05
+        review_weight = (
+            min(math.log10(review_count) / 3.0, 1.0) if review_count > 0 else 0.05
+        )
         rating_weight = rating / 5.0
         strength = review_weight * 0.7 + rating_weight * 0.3
 
@@ -300,9 +310,7 @@ def score_site(address: str, brand_type: str = "restaurant") -> Dict[str, Any]:
     verdict = (
         "Strong"
         if total >= verdict_thresholds["strong"]
-        else "Moderate"
-        if total >= verdict_thresholds["moderate"]
-        else "Weak"
+        else "Moderate" if total >= verdict_thresholds["moderate"] else "Weak"
     )
 
     return {

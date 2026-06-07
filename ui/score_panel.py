@@ -19,20 +19,14 @@ def render_score_breakdown(result: Dict[str, Any], brand_type: str) -> None:
     vc = (
         "#1D9E75"
         if verdict == "Strong"
-        else "#BA7517"
-        if verdict == "Moderate"
-        else "#C0392B"
+        else "#BA7517" if verdict == "Moderate" else "#C0392B"
     )
 
     benchmark = get_category_context(total, brand_type)
     stats = benchmark["stats"]
     percentile = benchmark["percentile"]
     bar_color = (
-        "#1D9E75"
-        if percentile >= 65
-        else "#BA7517"
-        if percentile >= 40
-        else "#C0392B"
+        "#1D9E75" if percentile >= 65 else "#BA7517" if percentile >= 40 else "#C0392B"
     )
 
     st.markdown("---")
@@ -162,10 +156,21 @@ def render_score_breakdown(result: Dict[str, Any], brand_type: str) -> None:
             fill=True,
             fill_color=vc,
             fill_opacity=0.9,
-            popup=folium.Popup(f"<b>{result['address']}</b><br>Score: {total}/100", max_width=220),
+            popup=folium.Popup(
+                f"<b>{result['address']}</b><br>Score: {total}/100", max_width=220
+            ),
         ).add_to(m)
-        folium.Circle(location=[lat, lng], radius=500, color="#1D9E75", fill=True, fill_color="#1D9E75", fill_opacity=0.05).add_to(m)
-        folium.Circle(location=[lat, lng], radius=1000, color="#BA7517", fill=False).add_to(m)
+        folium.Circle(
+            location=[lat, lng],
+            radius=500,
+            color="#1D9E75",
+            fill=True,
+            fill_color="#1D9E75",
+            fill_opacity=0.05,
+        ).add_to(m)
+        folium.Circle(
+            location=[lat, lng], radius=1000, color="#BA7517", fill=False
+        ).add_to(m)
         st_folium(m, width="100%", height=400, returned_objects=[])
 
     # Explainability & competitors
@@ -184,47 +189,104 @@ def render_score_breakdown(result: Dict[str, Any], brand_type: str) -> None:
             risks.append("Limited road connectivity")
         if risks:
             for r in risks:
-                st.markdown(f"<div style='background:#1a0e0e;border-left:3px solid #C0392B;padding:8px 12px;border-radius:0 6px 6px 0;font-size:12px;color:#ccc;margin-bottom:6px'>! {r}</div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='background:#1a0e0e;border-left:3px solid #C0392B;padding:8px 12px;border-radius:0 6px 6px 0;font-size:12px;color:#ccc;margin-bottom:6px'>! {r}</div>",
+                    unsafe_allow_html=True,
+                )
         else:
-            st.markdown("<div style='background:#0d1f1a;border-left:3px solid #1D9E75;padding:8px 12px;border-radius:0 6px 6px 0;font-size:12px;color:#9ecfc0'>No significant risk flags at this location</div>", unsafe_allow_html=True)
+            st.markdown(
+                "<div style='background:#0d1f1a;border-left:3px solid #1D9E75;padding:8px 12px;border-radius:0 6px 6px 0;font-size:12px;color:#9ecfc0'>No significant risk flags at this location</div>",
+                unsafe_allow_html=True,
+            )
 
     with col_explain:
         st.markdown("**What we found**")
         raw = result.get("raw", {})
 
         def mini_row(label, value, note):
-            st.markdown(f"<div style='border-bottom:1px solid #1a1a1a;padding:7px 0;margin-bottom:2px'><div style='display:flex;justify-content:space-between'><span style='font-size:11px;color:#888'>{label}</span><span style='font-size:13px;font-weight:700;color:white'>{value}</span></div><div style='font-size:10px;color:#555;margin-top:1px'>{note}</div></div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div style='border-bottom:1px solid #1a1a1a;padding:7px 0;margin-bottom:2px'><div style='display:flex;justify-content:space-between'><span style='font-size:11px;color:#888'>{label}</span><span style='font-size:13px;font-weight:700;color:white'>{value}</span></div><div style='font-size:10px;color:#555;margin-top:1px'>{note}</div></div>",
+                unsafe_allow_html=True,
+            )
 
         method = raw.get("demand_method", "osm_buildings")
         if method == "census_2011":
-            mini_row("Est. population within 1km", f"{raw.get('demand_population',0):,}", f"Census 2011 ward data · {raw.get('demand_households',0):,} households")
+            mini_row(
+                "Est. population within 1km",
+                f"{raw.get('demand_population',0):,}",
+                f"Census 2011 ward data · {raw.get('demand_households',0):,} households",
+            )
             wards = raw.get("demand_wards", [])
             if wards:
                 ward_names = " · ".join(w["name"] for w in wards[:3])
                 mini_row("Contributing wards", str(len(wards)), ward_names)
         else:
-            mini_row("Residential buildings within 1km", f"{raw.get('demand_buildings',0):,}", "OpenStreetMap buildings (Census data unavailable)")
-            mini_row("Footfall anchors", str(sum(raw.get("footfall_anchors", {}).values()) if raw.get("footfall_anchors") else 0), "supermarkets, hospitals, schools within 500m")
-            mini_row("Competitors found", str(raw.get("competitor_count", 0)), "weighted by review count + rating")
-            mini_row("Road intersections", str(raw.get("intersections", 0)), "within 300m drive network")
-            mini_row("Commercial places", str(raw.get("catchment_places", 0)), "shops, cafes within 1km")
+            mini_row(
+                "Residential buildings within 1km",
+                f"{raw.get('demand_buildings',0):,}",
+                "OpenStreetMap buildings (Census data unavailable)",
+            )
+            mini_row(
+                "Footfall anchors",
+                str(
+                    sum(raw.get("footfall_anchors", {}).values())
+                    if raw.get("footfall_anchors")
+                    else 0
+                ),
+                "supermarkets, hospitals, schools within 500m",
+            )
+            mini_row(
+                "Competitors found",
+                str(raw.get("competitor_count", 0)),
+                "weighted by review count + rating",
+            )
+            mini_row(
+                "Road intersections",
+                str(raw.get("intersections", 0)),
+                "within 300m drive network",
+            )
+            mini_row(
+                "Commercial places",
+                str(raw.get("catchment_places", 0)),
+                "shops, cafes within 1km",
+            )
             spending = raw.get("spending_data", {})
             avg_p = spending.get("avg_price_level")
-            mini_row("Avg price level", f"{avg_p}/4.0" if avg_p else "N/A", f"{spending.get('sample_size',0)} places sampled")
+            mini_row(
+                "Avg price level",
+                f"{avg_p}/4.0" if avg_p else "N/A",
+                f"{spending.get('sample_size',0)} places sampled",
+            )
 
     if result.get("competitor_details"):
         st.markdown("### Nearby Competitors")
-        competitors = sorted(result["competitor_details"], key=lambda x: x["strength"], reverse=True)[:8]
+        competitors = sorted(
+            result["competitor_details"], key=lambda x: x["strength"], reverse=True
+        )[:8]
         col_left, col_comp, col_right = st.columns([1, 10, 1])
         with col_comp:
             for comp in competitors:
                 strength = comp["strength"]
-                bar_color2 = ("#C0392B" if strength > 0.6 else "#BA7517" if strength > 0.3 else "#1D9E75")
+                bar_color2 = (
+                    "#C0392B"
+                    if strength > 0.6
+                    else "#BA7517" if strength > 0.3 else "#1D9E75"
+                )
                 bar_w = int(strength * 100)
-                stars = "★" * int(round(comp["rating"])) + "☆" * (5 - int(round(comp["rating"])))
-                rev_label = (f"{comp['reviews']:,} reviews" if comp["reviews"] > 0 else "No reviews")
+                stars = "★" * int(round(comp["rating"])) + "☆" * (
+                    5 - int(round(comp["rating"]))
+                )
+                rev_label = (
+                    f"{comp['reviews']:,} reviews"
+                    if comp["reviews"] > 0
+                    else "No reviews"
+                )
                 comp_name = comp["name"]
-                label_text = "Strong" if strength > 0.6 else "Moderate" if strength > 0.3 else "Weak"
+                label_text = (
+                    "Strong"
+                    if strength > 0.6
+                    else "Moderate" if strength > 0.3 else "Weak"
+                )
                 html = (
                     "<div style='background:#111;border:1px solid #222;border-radius:8px;padding:10px 14px;margin-bottom:6px'>"
                     f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px'>"
@@ -245,5 +307,11 @@ def render_score_breakdown(result: Dict[str, Any], brand_type: str) -> None:
         generate_report(result, path)
         with open(path, "rb") as f:
             pdf_bytes = f.read()
-    st.download_button(label="Download PDF Report", data=pdf_bytes, file_name="sitescore_report.pdf", mime="application/pdf", use_container_width=True)
+    st.download_button(
+        label="Download PDF Report",
+        data=pdf_bytes,
+        file_name="sitescore_report.pdf",
+        mime="application/pdf",
+        use_container_width=True,
+    )
     st.caption("SiteScore Analytics · Gujarat · " "OpenStreetMap + Google Places API")

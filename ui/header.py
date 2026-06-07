@@ -1,11 +1,13 @@
 import streamlit as st
 import base64
 
+
 def render_header():
     with open("assets/logo.png", "rb") as img_file:
         encoded_logo = base64.b64encode(img_file.read()).decode()
 
-    st.markdown(f"""
+    st.markdown(
+        f"""
     <style>
     .site-header {{
         background: linear-gradient(90deg, #0A2E26, #005447);
@@ -41,4 +43,6 @@ def render_header():
         <img src="data:image/png;base64,{encoded_logo}" class="header-logo" alt="SiteIQ">
         <div class="subtitle">Data-driven retail location intelligence for Gujarat</div>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )

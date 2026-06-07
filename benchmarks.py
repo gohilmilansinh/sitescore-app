@@ -23,17 +23,13 @@ def get_benchmark_stats(brand_type: str = "restaurant") -> Dict[str, Any]:
     ]
 
     if not relevant:
-        relevant = [
-            (entry["score"], entry["address"])
-            for entry in BENCHMARK_DATA
-        ]
+        relevant = [(entry["score"], entry["address"]) for entry in BENCHMARK_DATA]
 
     scores_only = [score for score, _ in relevant]
     avg = round(sum(scores_only) / len(scores_only), 1)
     top25 = sorted(scores_only, reverse=True)
     top25_avg = round(
-        sum(top25[: max(1, len(top25) // 4)]) /
-        max(1, len(top25) // 4),
+        sum(top25[: max(1, len(top25) // 4)]) / max(1, len(top25) // 4),
         1,
     )
 
@@ -70,7 +66,9 @@ def get_percentile(score: float, brand_type: str = "restaurant") -> int:
     return round((below / len(relevant)) * 100)
 
 
-def get_category_context(score: float, brand_type: str = "restaurant") -> Dict[str, Any]:
+def get_category_context(
+    score: float, brand_type: str = "restaurant"
+) -> Dict[str, Any]:
     """Returns a human-readable benchmark context string."""
     stats = get_benchmark_stats(brand_type)
     percentile = get_percentile(score, brand_type)
@@ -94,4 +92,3 @@ def get_category_context(score: float, brand_type: str = "restaurant") -> Dict[s
             f"(avg: {stats['average']}, top sites: {stats['top_sites_avg']})."
         ),
     }
-

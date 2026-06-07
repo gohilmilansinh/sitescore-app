@@ -9,13 +9,12 @@ from report import generate_report
 import time
 import streamlit.components.v1 as components
 from persistence import load_history, save_to_history, clear_history
-from benchmarks import get_category_context
 import os
 
 st.set_page_config(
     page_title="SiteIQ — Retail Location Intelligence",
     page_icon="assets/sitelogo.png",
-    layout="wide"
+    layout="wide",
 )
 
 render_header()
@@ -297,8 +296,7 @@ if mode == "Single Site":
     components.html(search_html, height=370, scrolling=False)
 
     # ── Score button ──────────────────────────────────────
-    if st.button("Score This Site", type="primary",
-                 use_container_width=True):
+    if st.button("Score This Site", type="primary", use_container_width=True):
         # Re-read address from query params in case updated by map
         if "address" in st.query_params:
             st.session_state.search_address = st.query_params["address"]
@@ -318,13 +316,11 @@ if mode == "Single Site":
                 save_to_history(result)
         else:
             st.warning(
-                "Please search or click on the map to select "
-                "a location first."
+                "Please search or click on the map to select " "a location first."
             )
 
     # ── Results ───────────────────────────────────────────
-    if st.session_state.result and \
-            "error" not in st.session_state.result:
+    if st.session_state.result and "error" not in st.session_state.result:
         result = st.session_state.result
         scores = result.get("scores", {})
         if not scores:
@@ -344,8 +340,7 @@ elif mode == "Compare N Sites":
 
     # ── Number of sites selector ──────────────────────────
     num_sites = st.slider(
-        "How many sites to compare?",
-        min_value=2, max_value=6, value=3, step=1
+        "How many sites to compare?", min_value=2, max_value=6, value=3, step=1
     )
 
     brand_type_c = st.selectbox(
@@ -359,24 +354,26 @@ elif mode == "Compare N Sites":
         st.session_state.compare_addresses = [""] * 6
     if len(st.session_state.compare_addresses) < 6:
         st.session_state.compare_addresses += [""] * (
-            6 - len(st.session_state.compare_addresses))
+            6 - len(st.session_state.compare_addresses)
+        )
 
     # Read any address updates from query params
     for i in range(num_sites):
         key = f"caddr_{i}"
         if key in st.query_params:
-            st.session_state.compare_addresses[i] = \
-                st.query_params[key]
+            st.session_state.compare_addresses[i] = st.query_params[key]
 
     # ── Multi-site map + search boxes ─────────────────────
     # Build JS arrays for current addresses
-    addr_js = "[" + ",".join(
-        f'"{st.session_state.compare_addresses[i]}"'
-        for i in range(num_sites)
-    ) + "]"
+    addr_js = (
+        "["
+        + ",".join(
+            f'"{st.session_state.compare_addresses[i]}"' for i in range(num_sites)
+        )
+        + "]"
+    )
 
-    colors_js = '["#1D9E75","#BA7517","#C0392B",' \
-                '"#185FA5","#8B5CF6","#E67E22"]'
+    colors_js = '["#1D9E75","#BA7517","#C0392B",' '"#185FA5","#8B5CF6","#E67E22"]'
 
     compare_html = f"""
     <style>
@@ -676,15 +673,13 @@ elif mode == "Compare N Sites":
     components.html(compare_html, height=500, scrolling=False)
 
     # ── Compare button ────────────────────────────────────
-    if st.button("Compare All Sites", type="primary",
-                 use_container_width=True):
+    if st.button("Compare All Sites", type="primary", use_container_width=True):
 
         # Re-read addresses from query params
         for i in range(num_sites):
             key = f"caddr_{i}"
             if key in st.query_params:
-                st.session_state.compare_addresses[i] = \
-                    st.query_params[key]
+                st.session_state.compare_addresses[i] = st.query_params[key]
 
         addresses = [
             st.session_state.compare_addresses[i].strip()
@@ -693,52 +688,39 @@ elif mode == "Compare N Sites":
         ]
 
         if len(addresses) < 2:
-            st.warning(
-                "Please enter at least 2 addresses "
-                "to compare."
-            )
+            st.warning("Please enter at least 2 addresses " "to compare.")
         else:
             results = []
             progress = st.progress(0, text="Scoring sites...")
             for i, addr in enumerate(addresses):
-                with st.spinner(
-                    f"Scoring site {i+1} of {len(addresses)}..."
-                ):
+                with st.spinner(f"Scoring site {i+1} of {len(addresses)}..."):
                     r = score_site(addr, brand_type_c)
                     if r and "error" not in r:
                         results.append(r)
                     elif r and "error" in r:
-                        st.warning(
-                            f"Skipped '{addr}': {r['error']}"
-                        )
+                        st.warning(f"Skipped '{addr}': {r['error']}")
                     progress.progress(
-                        (i+1) / len(addresses),
+                        (i + 1) / len(addresses),
                         text=f"Scored {i+1} of {len(addresses)}",
                     )
                     time.sleep(0.3)
             progress.empty()
 
             if results:
-                results.sort(
-                    key=lambda x: x["total_score"],
-                    reverse=True
-                )
+                results.sort(key=lambda x: x["total_score"], reverse=True)
                 st.session_state.compared = results
                 for r in results:
                     r["mode"] = "compare"
                     save_to_history(r)
             else:
-                st.error(
-                    "Could not score any of those addresses."
-                )
+                st.error("Could not score any of those addresses.")
 
     # ── Results (same as before) ──────────────────────────
     if st.session_state.compared:
-        results     = st.session_state.compared
-        rank_colors = ["#1D9E75","#BA7517","#C0392B",
-                       "#185FA5","#8B5CF6","#E67E22"]
-        rank_labels = ["BEST","2ND","3RD","4TH","5TH","6TH"]
-        rank_emoji  = ["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣"]
+        results = st.session_state.compared
+        rank_colors = ["#1D9E75", "#BA7517", "#C0392B", "#185FA5", "#8B5CF6", "#E67E22"]
+        rank_labels = ["BEST", "2ND", "3RD", "4TH", "5TH", "6TH"]
+        rank_emoji = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣"]
 
         st.markdown("---")
         st.markdown("### Ranking")
@@ -761,32 +743,51 @@ elif mode == "Compare N Sites":
                     f"<div style='font-size:10px;color:#666;"
                     f"margin-top:4px'>{r['address'][:35]}...</div>"
                     f"</div>",
-                    unsafe_allow_html=True
+                    unsafe_allow_html=True,
                 )
 
         # Bar chart
         st.markdown("### Score Breakdown Comparison")
-        categories = ["Demand","Footfall","Competition",
-                      "Accessibility","Catchment","Spending Power"]
-        score_keys = ["demand","footfall","competition",
-                      "accessibility","catchment","spending_power"]
+        categories = [
+            "Demand",
+            "Footfall",
+            "Competition",
+            "Accessibility",
+            "Catchment",
+            "Spending Power",
+        ]
+        score_keys = [
+            "demand",
+            "footfall",
+            "competition",
+            "accessibility",
+            "catchment",
+            "spending_power",
+        ]
 
         fig = go.Figure()
         for i, r in enumerate(results):
             vals = [r["scores"].get(k, 0) for k in score_keys]
             name = r["address"].split(",")[0]
-            fig.add_trace(go.Bar(
-                name=name, x=categories, y=vals,
-                marker_color=rank_colors[i] if i < len(rank_colors) else "#888",
-                text=[str(v) for v in vals],
-                textposition="outside",
-            ))
+            fig.add_trace(
+                go.Bar(
+                    name=name,
+                    x=categories,
+                    y=vals,
+                    marker_color=rank_colors[i] if i < len(rank_colors) else "#888",
+                    text=[str(v) for v in vals],
+                    textposition="outside",
+                )
+            )
         fig.update_layout(
-            barmode="group", height=420,
-            plot_bgcolor="white", paper_bgcolor="white",
-            yaxis=dict(range=[0,115], gridcolor="#EEEEEE"),
-            legend=dict(orientation="h", yanchor="bottom",
-                        y=1.02, xanchor="right", x=1),
+            barmode="group",
+            height=420,
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            yaxis=dict(range=[0, 115], gridcolor="#EEEEEE"),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
             margin=dict(l=20, r=20, t=40, b=20),
         )
         st.plotly_chart(fig, use_container_width=True)
@@ -795,12 +796,11 @@ elif mode == "Compare N Sites":
         st.markdown("### Detailed Score Table")
 
         def score_color(s):
-            return ("#1D9E75" if s >= 65
-                    else "#BA7517" if s >= 45 else "#C0392B")
+            return "#1D9E75" if s >= 65 else "#BA7517" if s >= 45 else "#C0392B"
 
         rows_html = ""
         for i, r in enumerate(results):
-            vc   = rank_colors[i] if i < len(rank_colors) else "#888"
+            vc = rank_colors[i] if i < len(rank_colors) else "#888"
             name = r["address"].split(",")[0]
             rows_html += (
                 f"<tr>"
@@ -843,25 +843,21 @@ elif mode == "Compare N Sites":
         </tr></thead><tbody>{rows_html}</tbody></table></div>
         </body></html>"""
 
-        components.html(
-            table_html,
-            height=40 + len(results) * 52
-        )
+        components.html(table_html, height=40 + len(results) * 52)
 
         # Multi-site results map
         st.markdown("### All Sites on Map")
         center_lat = sum(r["lat"] for r in results) / len(results)
         center_lng = sum(r["lng"] for r in results) / len(results)
         m = folium.Map(
-            location=[center_lat, center_lng],
-            zoom_start=12, tiles="CartoDB positron"
+            location=[center_lat, center_lng], zoom_start=12, tiles="CartoDB positron"
         )
         for i, r in enumerate(results):
-            color = (["green","orange","red","blue",
-                      "purple","darkred"])[i % 6]
+            color = (["green", "orange", "red", "blue", "purple", "darkred"])[i % 6]
             folium.CircleMarker(
                 location=[r["lat"], r["lng"]],
-                radius=16, color="#0A2E26",
+                radius=16,
+                color="#0A2E26",
                 fill=True,
                 fill_color=rank_colors[i % len(rank_colors)],
                 fill_opacity=0.9,
@@ -881,8 +877,7 @@ elif mode == "Compare N Sites":
                 fill_opacity=0.05,
                 weight=1.5,
             ).add_to(m)
-        st_folium(m, width="100%", height=460,
-                  returned_objects=[])
+        st_folium(m, width="100%", height=460, returned_objects=[])
 
         # Recommendation
         best = results[0]
@@ -916,8 +911,7 @@ elif mode == "Compare N Sites":
             use_container_width=True,
         )
         st.caption(
-            "SiteScore Analytics · Gujarat · "
-            "OpenStreetMap + Google Places API"
+            "SiteScore Analytics · Gujarat · " "OpenStreetMap + Google Places API"
         )
 
 
