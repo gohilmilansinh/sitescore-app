@@ -335,21 +335,16 @@ if mode == "Single Site":
 # COMPARE 3 SITES MODE
 # ════════════════════════════════════════════════════════════
 elif mode == "Compare 3 Sites":
-    st.markdown("#### Enter 3 candidate sites to compare")
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        addr1 = st.text_input(
-            "Site 1", placeholder="e.g. Bopal, Ahmedabad", key="addr1"
-        )
-    with col2:
-        addr2 = st.text_input(
-            "Site 2", placeholder="e.g. Prahlad Nagar, Ahmedabad", key="addr2"
-        )
-    with col3:
-        addr3 = st.text_input(
-            "Site 3", placeholder="e.g. Vastrapur, Ahmedabad", key="addr3"
-        )
+    GKEY = os.environ.get("GOOGLE_API_KEY", "")
+
+    st.markdown("#### Compare Multiple Sites")
+
+    # ── Number of sites selector ──────────────────────────
+    num_sites = st.slider(
+        "How many sites to compare?",
+        min_value=2, max_value=6, value=3, step=1
+    )
 
     brand_type_c = st.selectbox(
         "Brand type",
@@ -357,213 +352,516 @@ elif mode == "Compare 3 Sites":
         key="compare_type",
     )
 
-    if st.button("Compare All 3 Sites", type="primary", use_container_width=True):
-        addresses = [a.strip() for a in [addr1, addr2, addr3] if a.strip()]
+    # ── Initialize session state for addresses ────────────
+    if "compare_addresses" not in st.session_state:
+        st.session_state.compare_addresses = [""] * 6
+    if len(st.session_state.compare_addresses) < 6:
+        st.session_state.compare_addresses += [""] * (
+            6 - len(st.session_state.compare_addresses))
+
+    # Read any address updates from query params
+    for i in range(num_sites):
+        key = f"caddr_{i}"
+        if key in st.query_params:
+            st.session_state.compare_addresses[i] = \
+                st.query_params[key]
+
+    # ── Multi-site map + search boxes ─────────────────────
+    # Build JS arrays for current addresses
+    addr_js = "[" + ",".join(
+        f'"{st.session_state.compare_addresses[i]}"'
+        for i in range(num_sites)
+    ) + "]"
+
+    colors_js = '["#1D9E75","#BA7517","#C0392B",' \
+                '"#185FA5","#8B5CF6","#E67E22"]'
+
+    compare_html = f"""
+    <style>
+      * {{ box-sizing:border-box;margin:0;padding:0 }}
+      body {{ background:transparent;overflow:visible }}
+
+      .sites-grid {{
+        display:grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px,1fr));
+        gap:10px;
+        margin-bottom:10px;
+      }}
+
+      .site-input-wrap {{
+        position:relative;
+      }}
+
+      .site-label {{
+        font-size:11px;font-weight:600;
+        font-family:sans-serif;margin-bottom:4px;
+        letter-spacing:0.5px;
+      }}
+
+      .site-input {{
+        width:100%;padding:10px 30px 10px 12px;
+        font-size:13px;border-radius:8px;
+        background:#0d1f1a;color:white;
+        outline:none;font-family:sans-serif;
+        border:2px solid #333;
+      }}
+      .site-input::placeholder {{ color:#555; }}
+      .site-input:focus {{ border-color:#1D9E75; }}
+
+      .clear-site-btn {{
+        position:absolute;right:8px;bottom:10px;
+        background:none;border:none;color:#555;
+        font-size:16px;cursor:pointer;line-height:1;
+        display:none;
+      }}
+
+      #compare-map {{
+        width:100%;height:360px;border-radius:10px;
+        border:1px solid #1a3a2a;margin-top:10px;
+      }}
+
+      #map-status {{
+        font-size:11px;color:#9ecfc0;
+        font-family:sans-serif;margin-top:6px;
+        min-height:14px;
+      }}
+
+      .pac-container {{
+        z-index:2147483647 !important;
+        position:absolute !important;
+        background:#0d1f1a !important;
+        border:1px solid #1D9E75 !important;
+        border-radius:0 0 8px 8px !important;
+        font-family:sans-serif !important;
+        box-shadow:0 8px 24px rgba(0,0,0,0.8) !important;
+      }}
+      .pac-item {{
+        color:#ccc !important;background:#0d1f1a !important;
+        padding:10px 14px !important;font-size:13px !important;
+        cursor:pointer !important;
+        border-top:1px solid #1a3a2a !important;
+      }}
+      .pac-item:hover {{ background:#1a4a3a !important; }}
+      .pac-item-query {{ color:white !important; }}
+      .pac-matched {{ color:#1D9E75 !important;font-weight:600 !important; }}
+      .pac-icon {{ display:none !important; }}
+    </style>
+
+    <div class='sites-grid' id='sites-grid'></div>
+    <div id='compare-map'></div>
+    <div id='map-status'>
+      Click any marker to edit · Click empty map area to add a pin
+    </div>
+
+    <script>
+      const NUM_SITES  = {num_sites};
+      const ADDRESSES  = {addr_js};
+      const COLORS     = {colors_js};
+      const LABELS     = ['A','B','C','D','E','F'];
+      const GKEY       = '{GKEY}';
+
+      let map, geocoder;
+      let markers   = Array(NUM_SITES).fill(null);
+      let autocomps = Array(NUM_SITES).fill(null);
+      let inputs    = Array(NUM_SITES).fill(null);
+
+      // Build input grid
+      const grid = document.getElementById('sites-grid');
+      for (let i = 0; i < NUM_SITES; i++) {{
+        const wrap = document.createElement('div');
+        wrap.className = 'site-input-wrap';
+        wrap.innerHTML = `
+          <div class="site-label"
+            style="color:${{COLORS[i]}}">
+            SITE ${{LABELS[i]}}
+          </div>
+          <input
+            id="site-input-${{i}}"
+            class="site-input"
+            type="text"
+            placeholder="Search location ${{i+1}}..."
+            value="${{ADDRESSES[i]}}"
+            autocomplete="off"
+            style="border-color:${{ADDRESSES[i] ? COLORS[i] : '#333'}}"
+          />
+          <button
+            class="clear-site-btn"
+            id="clear-${{i}}"
+            onclick="clearSite(${{i}})"
+            style="display:${{ADDRESSES[i] ? 'block' : 'none'}}">
+            ×
+          </button>
+        `;
+        grid.appendChild(wrap);
+        inputs[i] = document.getElementById(`site-input-${{i}}`);
+        inputs[i].addEventListener('input', function() {{
+          document.getElementById(`clear-${{i}}`).style.display =
+            this.value ? 'block' : 'none';
+          inputs[i].style.borderColor =
+            this.value ? COLORS[i] : '#333';
+        }});
+      }}
+
+      function clearSite(i) {{
+        inputs[i].value = '';
+        inputs[i].style.borderColor = '#333';
+        document.getElementById(`clear-${{i}}`).style.display = 'none';
+        if (markers[i]) {{ markers[i].setMap(null); markers[i] = null; }}
+        pushAddress(i, '');
+      }}
+
+      function pushAddress(i, addr) {{
+        const url = new URL(window.parent.location.href);
+        url.searchParams.set(`caddr_${{i}}`, addr);
+        window.parent.history.replaceState({{}}, '', url.toString());
+      }}
+
+      function placeMarker(i, position, addr) {{
+        if (markers[i]) markers[i].setMap(null);
+        markers[i] = new google.maps.Marker({{
+          position: position,
+          map: map,
+          title: addr,
+          animation: google.maps.Animation.DROP,
+          label: {{
+            text: LABELS[i],
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '13px'
+          }},
+          icon: {{
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 16,
+            fillColor: COLORS[i],
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2.5
+          }}
+        }});
+
+        // Click marker to focus its input
+        markers[i].addListener('click', function() {{
+          inputs[i].focus();
+          inputs[i].select();
+        }});
+      }}
+
+      function geocodeAndPlace(i, addr) {{
+        if (!addr.trim()) return;
+        geocoder.geocode({{address: addr + ', Gujarat, India'}},
+          function(results, s) {{
+            if (s === 'OK' && results[0]) {{
+              placeMarker(i, results[0].geometry.location, addr);
+              // Fit map to all markers
+              fitMapToMarkers();
+            }}
+          }}
+        );
+      }}
+
+      function fitMapToMarkers() {{
+        const bounds = new google.maps.LatLngBounds();
+        let count = 0;
+        markers.forEach(function(m) {{
+          if (m) {{ bounds.extend(m.getPosition()); count++; }}
+        }});
+        if (count === 1) {{
+          map.setCenter(bounds.getCenter());
+          map.setZoom(14);
+        }} else if (count > 1) {{
+          map.fitBounds(bounds, {{padding: 60}});
+        }}
+      }}
+
+      function initMap() {{
+        geocoder = new google.maps.Geocoder();
+
+        map = new google.maps.Map(
+          document.getElementById('compare-map'), {{
+            center: {{ lat:23.0225, lng:72.5714 }},
+            zoom: 11,
+            mapTypeControl:false,
+            streetViewControl:false,
+            fullscreenControl:false,
+            styles:[
+              {{elementType:'geometry',
+                stylers:[{{color:'#0d1f1a'}}]}},
+              {{elementType:'labels.text.fill',
+                stylers:[{{color:'#9ecfc0'}}]}},
+              {{elementType:'labels.text.stroke',
+                stylers:[{{color:'#0a1a14'}}]}},
+              {{featureType:'road',elementType:'geometry',
+                stylers:[{{color:'#1a3a2a'}}]}},
+              {{featureType:'road.highway',elementType:'geometry',
+                stylers:[{{color:'#1D9E75'}}]}},
+              {{featureType:'water',elementType:'geometry',
+                stylers:[{{color:'#0d1f2a'}}]}},
+              {{featureType:'poi',
+                stylers:[{{visibility:'off'}}]}}
+            ]
+          }}
+        );
+
+        // Setup autocomplete for each input
+        for (let i = 0; i < NUM_SITES; i++) {{
+          autocomps[i] = new google.maps.places.Autocomplete(
+            inputs[i], {{
+              componentRestrictions: {{ country:'in' }},
+              bounds: new google.maps.LatLngBounds(
+                new google.maps.LatLng(20.1, 68.1),
+                new google.maps.LatLng(24.7, 74.5)
+              ),
+              strictBounds: false,
+              fields: ['formatted_address','geometry','name']
+            }}
+          );
+
+          (function(idx) {{
+            autocomps[idx].addListener('place_changed', function() {{
+              const place = autocomps[idx].getPlace();
+              if (!place.geometry) return;
+              const addr = place.formatted_address || place.name;
+              inputs[idx].value = addr;
+              inputs[idx].style.borderColor = COLORS[idx];
+              document.getElementById(`clear-${{idx}}`).style.display = 'block';
+              placeMarker(idx, place.geometry.location, addr);
+              pushAddress(idx, addr);
+              fitMapToMarkers();
+            }});
+          }})(i);
+
+          // Show existing addresses on map
+          if (ADDRESSES[i]) {{
+            geocodeAndPlace(i, ADDRESSES[i]);
+          }}
+        }}
+
+        // Click on map to assign to next empty slot
+        map.addListener('click', function(e) {{
+          // Find first empty slot
+          let emptyIdx = -1;
+          for (let i = 0; i < NUM_SITES; i++) {{
+            if (!inputs[i].value.trim()) {{
+              emptyIdx = i; break;
+            }}
+          }}
+          if (emptyIdx === -1) return; // all filled
+
+          geocoder.geocode({{location: e.latLng}},
+            function(results, s) {{
+              const addr = (s==='OK' && results[0])
+                ? results[0].formatted_address
+                : e.latLng.lat().toFixed(6)+', '+
+                  e.latLng.lng().toFixed(6)+', Gujarat, India';
+              inputs[emptyIdx].value = addr;
+              inputs[emptyIdx].style.borderColor = COLORS[emptyIdx];
+              document.getElementById(
+                `clear-${{emptyIdx}}`).style.display = 'block';
+              placeMarker(emptyIdx, e.latLng, addr);
+              pushAddress(emptyIdx, addr);
+              document.getElementById('map-status').textContent =
+                `Site ${{LABELS[emptyIdx]}} set to: ${{addr.substring(0,50)}}`;
+            }}
+          );
+        }});
+      }}
+    </script>
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key={GKEY}&libraries=places&callback=initMap"
+      async defer></script>
+    """
+
+    components.html(compare_html, height=500, scrolling=False)
+
+    # ── Compare button ────────────────────────────────────
+    if st.button("Compare All Sites", type="primary",
+                 use_container_width=True):
+
+        # Re-read addresses from query params
+        for i in range(num_sites):
+            key = f"caddr_{i}"
+            if key in st.query_params:
+                st.session_state.compare_addresses[i] = \
+                    st.query_params[key]
+
+        addresses = [
+            st.session_state.compare_addresses[i].strip()
+            for i in range(num_sites)
+            if st.session_state.compare_addresses[i].strip()
+        ]
+
         if len(addresses) < 2:
-            st.warning("Please enter at least 2 addresses.")
+            st.warning(
+                "Please enter at least 2 addresses "
+                "to compare."
+            )
         else:
             results = []
             progress = st.progress(0, text="Scoring sites...")
             for i, addr in enumerate(addresses):
-                with st.spinner(f"Scoring site {i+1} of {len(addresses)}..."):
+                with st.spinner(
+                    f"Scoring site {i+1} of {len(addresses)}..."
+                ):
                     r = score_site(addr, brand_type_c)
                     if r and "error" not in r:
                         results.append(r)
                     elif r and "error" in r:
-                        st.warning(f"Skipped '{addr}': {r['error']}")
+                        st.warning(
+                            f"Skipped '{addr}': {r['error']}"
+                        )
                     progress.progress(
-                        (i + 1) / len(addresses),
+                        (i+1) / len(addresses),
                         text=f"Scored {i+1} of {len(addresses)}",
                     )
-                    time.sleep(0.5)
+                    time.sleep(0.3)
             progress.empty()
 
             if results:
-                results.sort(key=lambda x: x["total_score"], reverse=True)
+                results.sort(
+                    key=lambda x: x["total_score"],
+                    reverse=True
+                )
                 st.session_state.compared = results
-                # Save each compared site to history
                 for r in results:
                     r["mode"] = "compare"
                     save_to_history(r)
             else:
-                st.error("Could not score any of those addresses.")
+                st.error(
+                    "Could not score any of those addresses."
+                )
 
+    # ── Results (same as before) ──────────────────────────
     if st.session_state.compared:
-        results = st.session_state.compared
-        rank_colors = ["#1D9E75", "#BA7517", "#C0392B"]
-        rank_labels = ["BEST SITE", "2ND SITE", "3RD SITE"]
-        rank_classes = ["rank-1", "rank-2", "rank-3"]
-        rank_emoji = ["🥇", "🥈", "🥉"]
+        results     = st.session_state.compared
+        rank_colors = ["#1D9E75","#BA7517","#C0392B",
+                       "#185FA5","#8B5CF6","#E67E22"]
+        rank_labels = ["BEST","2ND","3RD","4TH","5TH","6TH"]
+        rank_emoji  = ["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣"]
 
         st.markdown("---")
         st.markdown("### Ranking")
 
-        # Podium cards
         cols = st.columns(len(results))
         for i, (r, col) in enumerate(zip(results, cols)):
             vc = rank_colors[i] if i < len(rank_colors) else "#888"
             with col:
                 st.markdown(
-                    f"""
-                <div class='{rank_classes[i]}'>
-                  <div class='rank-label' style='color:{vc}'>
-                    {rank_emoji[i]} {rank_labels[i]}</div>
-                  <div class='rank-score' style='color:{vc}'>
-                    {r["total_score"]}</div>
-                  <div style='font-size:13px;color:{vc};
-                              font-weight:600;margin-top:2px'>
-                    {r["verdict"].upper()} SITE</div>
-                  <div class='rank-addr'>{r["address"][:45]}</div>
-                </div>""",
-                    unsafe_allow_html=True,
+                    f"<div style='background:#111;border:2px solid {vc};"
+                    f"border-radius:10px;padding:14px;text-align:center;"
+                    f"margin-bottom:10px'>"
+                    f"<div style='font-size:10px;font-weight:700;"
+                    f"color:{vc};letter-spacing:1px'>"
+                    f"{rank_emoji[i]} {rank_labels[i]} SITE</div>"
+                    f"<div style='font-size:32px;font-weight:700;"
+                    f"color:{vc};line-height:1.2'>{r['total_score']}</div>"
+                    f"<div style='font-size:12px;color:{vc};"
+                    f"font-weight:600'>{r['verdict'].upper()}</div>"
+                    f"<div style='font-size:10px;color:#666;"
+                    f"margin-top:4px'>{r['address'][:35]}...</div>"
+                    f"</div>",
+                    unsafe_allow_html=True
                 )
 
-        # Comparison bar chart
+        # Bar chart
         st.markdown("### Score Breakdown Comparison")
-        categories = [
-            "Demand",
-            "Footfall",
-            "Competition",
-            "Accessibility",
-            "Catchment",
-            "Spending Power",
-        ]
-        score_keys = [
-            "demand",
-            "footfall",
-            "competition",
-            "accessibility",
-            "catchment",
-            "spending_power",
-        ]
-        colors_list = ["#1D9E75", "#BA7517", "#C0392B", "#185FA5", "#8B5CF6"]
+        categories = ["Demand","Footfall","Competition",
+                      "Accessibility","Catchment","Spending Power"]
+        score_keys = ["demand","footfall","competition",
+                      "accessibility","catchment","spending_power"]
 
         fig = go.Figure()
         for i, r in enumerate(results):
-            vals = [r["scores"][k] for k in score_keys]
+            vals = [r["scores"].get(k, 0) for k in score_keys]
             name = r["address"].split(",")[0]
-            fig.add_trace(
-                go.Bar(
-                    name=name,
-                    x=categories,
-                    y=vals,
-                    marker_color=rank_colors[i] if i < 3 else "#888",
-                    text=[str(v) for v in vals],
-                    textposition="outside",
-                )
-            )
-
+            fig.add_trace(go.Bar(
+                name=name, x=categories, y=vals,
+                marker_color=rank_colors[i] if i < len(rank_colors) else "#888",
+                text=[str(v) for v in vals],
+                textposition="outside",
+            ))
         fig.update_layout(
-            barmode="group",
-            height=420,
-            plot_bgcolor="white",
-            paper_bgcolor="white",
-            yaxis=dict(range=[0, 115], gridcolor="#EEEEEE", title="Score (0-100)"),
-            xaxis=dict(title=""),
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-            ),
+            barmode="group", height=420,
+            plot_bgcolor="white", paper_bgcolor="white",
+            yaxis=dict(range=[0,115], gridcolor="#EEEEEE"),
+            legend=dict(orientation="h", yanchor="bottom",
+                        y=1.02, xanchor="right", x=1),
             margin=dict(l=20, r=20, t=40, b=20),
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        # Detailed score table — mobile friendly HTML table
-
+        # Score table
         st.markdown("### Detailed Score Table")
 
         def score_color(s):
-            return "#1D9E75" if s >= 65 else "#BA7517" if s >= 45 else "#C0392B"
+            return ("#1D9E75" if s >= 65
+                    else "#BA7517" if s >= 45 else "#C0392B")
 
         rows_html = ""
         for i, r in enumerate(results):
-            vc = rank_colors[i] if i < 3 else "#888"
+            vc   = rank_colors[i] if i < len(rank_colors) else "#888"
             name = r["address"].split(",")[0]
-            rows_html += f"""
-            <tr>
-              <td style='padding:12px 14px;text-align:left;border-bottom:1px solid #222'>
-                <span style='font-size:15px'>{rank_emoji[i]}</span>
-                <span style='font-weight:600;color:white'> {name}</span>
-              </td>
-              <td style='padding:12px 10px;text-align:center;border-bottom:1px solid #222;
-                        color:{score_color(r["scores"]["demand"])};font-weight:600'>
-                {r["scores"]["demand"]}</td>
-              <td style='padding:12px 10px;text-align:center;border-bottom:1px solid #222;
-                        color:{score_color(r["scores"]["footfall"])};font-weight:600'>
-                {r["scores"]["footfall"]}</td>
-              <td style='padding:12px 10px;text-align:center;border-bottom:1px solid #222;
-                        color:{score_color(r["scores"]["competition"])};font-weight:600'>
-                {r["scores"]["competition"]}</td>
-              <td style='padding:12px 10px;text-align:center;border-bottom:1px solid #222;
-                        color:{score_color(r["scores"]["accessibility"])};font-weight:600'>
-                {r["scores"]["accessibility"]}</td>
-              <td style='padding:12px 10px;text-align:center;border-bottom:1px solid #222;
-                        color:{score_color(r["scores"]["catchment"])};font-weight:600'>
-                {r["scores"]["catchment"]}</td>
-              <td style='padding:12px 10px;text-align:center;border-bottom:1px solid #222;
-                        color:{vc};font-weight:700;font-size:17px'>
-                {r["total_score"]}</td>
-            </tr>"""
+            rows_html += (
+                f"<tr>"
+                f"<td style='padding:12px 14px;border-bottom:1px solid #222'>"
+                f"<span style='font-size:14px'>{rank_emoji[i]}</span>"
+                f"<span style='font-weight:600;color:white'> {name}</span>"
+                f"</td>"
+            )
+            for k in score_keys:
+                s = r["scores"].get(k, 0)
+                rows_html += (
+                    f"<td style='padding:12px 10px;text-align:center;"
+                    f"border-bottom:1px solid #222;"
+                    f"color:{score_color(s)};font-weight:600'>{s}</td>"
+                )
+            rows_html += (
+                f"<td style='padding:12px 10px;text-align:center;"
+                f"border-bottom:1px solid #222;color:{vc};"
+                f"font-weight:700;font-size:16px'>"
+                f"{r['total_score']}</td></tr>"
+            )
 
-        table_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        table_html = f"""<!DOCTYPE html><html><head>
+        <meta name="viewport" content="width=device-width,initial-scale=1">
         <style>
-          body {{ margin:0; padding:0; background:transparent; }}
-          .wrap {{ overflow-x:auto; -webkit-overflow-scrolling:touch;
-                  border-radius:10px; border:1px solid #333; }}
-          table {{ width:100%; border-collapse:collapse;
-                  background:#111; font-size:13px;
-                  white-space:nowrap; font-family:sans-serif; }}
-          thead tr {{ background:#0A2E26; }}
-          th {{ padding:12px 10px; text-align:center;
-                color:#9ecfc0; font-size:11px; letter-spacing:0.5px;
-                font-weight:600; }}
-          th:first-child {{ text-align:left; padding-left:14px; }}
-        </style>
-        </head>
-        <body>
-          <div class="wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>ADDRESS</th>
-                  <th>DEMAND</th>
-                  <th>FOOTFALL</th>
-                  <th>COMPETITION</th>
-                  <th>ACCESS</th>
-                  <th>CATCHMENT</th>
-                  <th>TOTAL</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows_html}
-              </tbody>
-            </table>
-          </div>
-        </body>
-        </html>
-        """
+          body{{margin:0;padding:0;background:transparent}}
+          .wrap{{overflow-x:auto;-webkit-overflow-scrolling:touch;
+                border-radius:10px;border:1px solid #333}}
+          table{{width:100%;border-collapse:collapse;background:#111;
+                font-size:13px;white-space:nowrap;font-family:sans-serif}}
+          thead tr{{background:#0A2E26}}
+          th{{padding:12px 10px;text-align:center;color:#9ecfc0;
+              font-size:11px;letter-spacing:0.5px;font-weight:600}}
+          th:first-child{{text-align:left;padding-left:14px}}
+        </style></head><body>
+        <div class="wrap"><table><thead><tr>
+          <th>ADDRESS</th><th>DEMAND</th><th>FOOTFALL</th>
+          <th>COMPETITION</th><th>ACCESS</th><th>CATCHMENT</th>
+          <th>SPENDING</th><th>TOTAL</th>
+        </tr></thead><tbody>{rows_html}</tbody></table></div>
+        </body></html>"""
 
-        components.html(table_html, height=40 + len(results) * 56)
+        components.html(
+            table_html,
+            height=40 + len(results) * 52
+        )
 
-        # Multi-site map
+        # Multi-site results map
         st.markdown("### All Sites on Map")
         center_lat = sum(r["lat"] for r in results) / len(results)
         center_lng = sum(r["lng"] for r in results) / len(results)
         m = folium.Map(
-            location=[center_lat, center_lng], zoom_start=13, tiles="CartoDB positron"
+            location=[center_lat, center_lng],
+            zoom_start=12, tiles="CartoDB positron"
         )
-
-        map_colors = ["green", "orange", "red"]
         for i, r in enumerate(results):
+            color = (["green","orange","red","blue",
+                      "purple","darkred"])[i % 6]
             folium.CircleMarker(
                 location=[r["lat"], r["lng"]],
-                radius=16,
-                color="#0A2E26",
+                radius=16, color="#0A2E26",
                 fill=True,
-                fill_color=rank_colors[i],
+                fill_color=rank_colors[i % len(rank_colors)],
                 fill_opacity=0.9,
                 popup=folium.Popup(
                     f"<b>#{i+1} {r['address']}</b>"
@@ -575,48 +873,39 @@ elif mode == "Compare 3 Sites":
             folium.Circle(
                 location=[r["lat"], r["lng"]],
                 radius=500,
-                color=rank_colors[i],
+                color=rank_colors[i % len(rank_colors)],
                 fill=True,
-                fill_color=rank_colors[i],
+                fill_color=rank_colors[i % len(rank_colors)],
                 fill_opacity=0.05,
-                dash_array="6",
                 weight=1.5,
             ).add_to(m)
+        st_folium(m, width="100%", height=460,
+                  returned_objects=[])
 
-        st_folium(m, width="100%", height=460, returned_objects=[])
-
-        # Recommendation box
+        # Recommendation
         best = results[0]
         st.markdown("### Recommendation")
         st.markdown(
-            f"""
-        <div style='background:#0A2E26;border-radius:10px;
-                    padding:20px 24px;color:white'>
-          <div style='font-size:11px;color:#9ecfc0;
-                      letter-spacing:1px'>RECOMMENDED SITE</div>
-          <div style='font-size:22px;font-weight:700;
-                      color:#1D9E75;margin-top:6px'>
-            {best["address"]}</div>
-          <div style='font-size:14px;color:#9ecfc0;margin-top:8px'>
-            Scored {best["total_score"]}/100 — highest across all
-            {len(results)} candidate sites analysed.
-            {"No risk flags detected." if
-             best["scores"]["competition"] >= 30 and
-             best["scores"]["demand"] >= 40
-             else "Review risk flags before committing."}
-          </div>
-        </div>""",
+            f"<div style='background:#0A2E26;border-radius:10px;"
+            f"padding:20px 24px;color:white'>"
+            f"<div style='font-size:11px;color:#9ecfc0;"
+            f"letter-spacing:1px'>RECOMMENDED SITE</div>"
+            f"<div style='font-size:22px;font-weight:700;"
+            f"color:#1D9E75;margin-top:6px'>{best['address']}</div>"
+            f"<div style='font-size:14px;color:#9ecfc0;margin-top:8px'>"
+            f"Scored {best['total_score']}/100 — highest across all "
+            f"{len(results)} candidate sites analysed.</div>"
+            f"</div>",
             unsafe_allow_html=True,
         )
 
-        # Export PDF for best site
+        # PDF for best site
         st.markdown("")
-        with st.spinner("Preparing PDF report..."):
+        with st.spinner("Preparing PDF..."):
             path = "/tmp/best_site_report.pdf"
             generate_report(best, path)
             with open(path, "rb") as f:
                 pdf_bytes = f.read()
-
         st.download_button(
             label="Download PDF Report for Best Site",
             data=pdf_bytes,
@@ -624,10 +913,11 @@ elif mode == "Compare 3 Sites":
             mime="application/pdf",
             use_container_width=True,
         )
-
         st.caption(
-            "SiteScore Analytics · Ahmedabad · " "OpenStreetMap + Google Places API"
+            "SiteScore Analytics · Gujarat · "
+            "OpenStreetMap + Google Places API"
         )
+
 
 # ════════════════════════════════════════════════════════════
 # HISTORY MODE
