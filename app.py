@@ -223,7 +223,7 @@ if mode == "Single Site":
         }}
         input.value = addr;
         status.textContent = 'Submitting...';
-        pushAddress(addr, false);
+        pushAddress(addr, true);
       }}
 
       function initMap() {{
@@ -321,6 +321,29 @@ if mode == "Single Site":
     """
 
     components.html(search_html, height=52, scrolling=False)
+    auto_score = st.query_params.get("do_score")
+
+if auto_score == "1":
+    addr = st.session_state.get("search_address", "").strip()
+
+    if addr:
+        with st.spinner("Analysing location..."):
+            result = score_site(addr, brand_type)
+
+        if not result:
+            st.session_state.result = None
+            st.error("Something went wrong. Please try again.")
+
+        elif "error" in result:
+            st.session_state.result = None
+            st.error(result["error"])
+
+        else:
+            result["mode"] = "single"
+            st.session_state.result = result
+            save_to_history(result)
+
+    st.query_params.pop("do_score", None)
 
     # Show confirmed address
     if current_address:
@@ -330,28 +353,7 @@ if mode == "Single Site":
             unsafe_allow_html=True,
         )
 
-    # Streamlit Score button — this is the reliable trigger
-    if st.button("Score This Site", type="primary",
-                 use_container_width=True):
-        addr = st.session_state.get("search_address", "").strip()
-        if addr:
-            with st.spinner("Analysing location..."):
-                result = score_site(addr, brand_type)
-            if not result:
-                st.session_state.result = None
-                st.error("Something went wrong. Please try again.")
-            elif "error" in result:
-                st.session_state.result = None
-                st.error(result["error"])
-            else:
-                result["mode"] = "single"
-                st.session_state.result = result
-                save_to_history(result)
-        else:
-            st.warning(
-                "Please search for a location first, "
-                "then click Score This Site."
-            )
+    
 
     if st.session_state.result and \
             "error" not in st.session_state.result:
