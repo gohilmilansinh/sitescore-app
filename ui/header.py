@@ -147,7 +147,7 @@ def render_header() -> None:
         }
 
         .logo-row img {
-            width:90px;
+            width:110px;
             height:auto;
         }
 
@@ -180,7 +180,7 @@ def render_header() -> None:
 
             <div class="logo-row">
 
-                <img src="https://github.com/gohilmilansinh/sitescore-app/blob/main/assets/logo.png">
+                <img src="https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/assets/sitelogo.png">
 
                 <div>
                     <div class="header-title">
