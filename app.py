@@ -21,7 +21,7 @@ render_header()
 # ── Mode selector ─────────────────────────────────────────
 mode = st.radio(
     "Mode",
-    ["Single Site", "Compare 3 Sites", "History"],
+    ["Single Site", "Compare N Sites", "History"],
     horizontal=True,
     label_visibility="collapsed",
 )
@@ -334,7 +334,7 @@ if mode == "Single Site":
 # ════════════════════════════════════════════════════════════
 # COMPARE 3 SITES MODE
 # ════════════════════════════════════════════════════════════
-elif mode == "Compare 3 Sites":
+elif mode == "Compare N Sites":
 
     GKEY = os.environ.get("GOOGLE_API_KEY", "")
 
