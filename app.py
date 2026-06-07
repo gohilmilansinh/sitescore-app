@@ -71,7 +71,7 @@ if mode == "Single Site":
         "Type",
         ["restaurant", "pharmacy", "supermarket", "bank", "school"],
         label_visibility="collapsed",
-        key="single_type",
+        key="single_type_v2",
     )
 
     search_html = f"""
