@@ -11,7 +11,6 @@ import streamlit.components.v1 as components
 from persistence import load_history, save_to_history, clear_history
 from benchmarks import get_category_context
 import os
-from header import render_header
 
 st.set_page_config(
     page_title="SiteIQ — Retail Location Intelligence",
