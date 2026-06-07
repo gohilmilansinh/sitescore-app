@@ -13,7 +13,9 @@ from benchmarks import get_category_context
 import os
 
 st.set_page_config(
-    page_title="SiteScore — Retail Site Intelligence", page_icon="📍", layout="wide"
+    page_title="SiteIQ — Retail Location Intelligence",
+    page_icon="assets/sitelogo.png",
+    layout="wide"
 )
 
 render_header()

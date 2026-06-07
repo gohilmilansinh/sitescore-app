@@ -1,13 +1,19 @@
 import streamlit as st
+import base64
 
+def get_base64_image(image_path):
+    with open(image_path, "rb") as img:
+        return base64.b64encode(img.read()).decode()
+
+logo_base64 = get_base64_image("assets/logo.png")
 
 def render_header() -> None:
     st.markdown(
         """
 <style>
   .site-header {
-    background: #0A2E26; border-radius: 10px;
-    padding: 20px 28px; margin-bottom: 24px;
+    background: #0A2E26; border-radius: 16px;
+    padding: 28px 36px; margin-bottom: 24px;
   }
   .score-box {
     background: #0A2E26; border-radius: 12px;
@@ -46,18 +52,23 @@ def render_header() -> None:
     )
 
     st.markdown(
-        """
+    f"""
 <div class='site-header'>
-  <div style='color:#9ecfc0;font-size:11px;letter-spacing:2px'>
-    RETAIL SITE INTELLIGENCE
-  </div>
-  <div style='color:white;font-size:24px;font-weight:700;margin-top:4px'>
-    SiteScore
-  </div>
-  <div style='color:#9ecfc0;font-size:13px;margin-top:2px'>
-    Score any retail location in Gujarat — instantly
-  </div>
+    <div style='color:#9ecfc0;font-size:11px;letter-spacing:2px'>
+        RETAIL LOCATION INTELLIGENCE
+    </div>
+
+    <div style='display:flex;align-items:center;gap:12px;margin-top:8px'>
+        <img src="data:image/png;base64,{logo_base64}" width="42">
+        <div style='color:white;font-size:28px;font-weight:700'>
+            SiteIQ
+        </div>
+    </div>
+
+    <div style='color:#9ecfc0;font-size:13px;margin-top:6px'>
+        Data-driven retail location intelligence for Gujarat
+    </div>
 </div>
 """,
-        unsafe_allow_html=True,
-    )
+    unsafe_allow_html=True,
+)
