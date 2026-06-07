@@ -61,106 +61,86 @@ if mode == "Single Site":
 
     GKEY = os.environ.get("GOOGLE_API_KEY", "")
 
-    # Read address from query params
     if "address" in st.query_params:
         st.session_state.search_address = st.query_params["address"]
 
     current_address = st.session_state.get("search_address", "")
 
+    # ── Type selector ─────────────────────────────────────
     brand_type = st.selectbox(
-        "Type",
+        "Select brand type",
         ["restaurant", "pharmacy", "supermarket", "bank", "school"],
-        label_visibility="collapsed",
         key="single_type_v2",
     )
 
+    # ── Search + Map (always visible) ─────────────────────
     search_html = f"""
     <style>
       * {{ box-sizing:border-box;margin:0;padding:0 }}
       body {{ background:transparent;overflow:visible }}
-      .row {{ display:flex;gap:6px;align-items:center;
-              position:relative;z-index:9999; }}
-      #search-wrapper {{ flex:1;position:relative; }}
+
       #pac-input {{
-        width:100%;padding:10px 32px 10px 12px;font-size:13px;
-        border:1px solid #1D9E75;border-radius:8px;
-        background:#0d1f1a;color:white;outline:none;
-        font-family:sans-serif;
+        width:100%;padding:12px 36px 12px 14px;
+        font-size:14px;border:1px solid #1D9E75;
+        border-radius:8px;background:#0d1f1a;
+        color:white;outline:none;font-family:sans-serif;
+        margin-bottom:8px;
       }}
-      #pac-input::placeholder {{ color:#888; }}
+      #pac-input::placeholder {{ color:#666; }}
+
+      #input-wrap {{ position:relative;width:100%; }}
+
       #clear-btn {{
-        position:absolute;right:8px;top:50%;
-        transform:translateY(-50%);background:none;border:none;
-        color:#888;font-size:16px;cursor:pointer;
-        display:none;line-height:1;
+        position:absolute;right:10px;top:13px;
+        background:none;border:none;color:#666;
+        font-size:18px;cursor:pointer;line-height:1;
+        display:none;
       }}
-      #map-container {{
-        margin-top:6px;height:260px;border-radius:8px;
-        border:1px solid #333;display:none;
-        position:relative;z-index:1;
+
+      #map-div {{
+        width:100%;height:320px;border-radius:10px;
+        border:1px solid #1a3a2a;
       }}
-      #map-div {{ height:100%;width:100%;border-radius:8px; }}
-      #hint {{
-        padding:6px;background:#0d1f1a;border-top:1px solid #333;
-        font-size:10px;color:#9ecfc0;text-align:center;
-        font-family:sans-serif;
-      }}
+
       #status {{
         font-size:11px;color:#1D9E75;font-family:sans-serif;
-        min-height:14px;margin-top:4px;
+        min-height:14px;margin-top:6px;
       }}
+
       .pac-container {{
         z-index:2147483647 !important;
         position:absolute !important;
         background:#0d1f1a !important;
         border:1px solid #1D9E75 !important;
-        border-radius:6px !important;
+        border-radius:0 0 8px 8px !important;
         font-family:sans-serif !important;
-        margin-top:2px !important;
-        box-shadow:0 4px 20px rgba(0,0,0,0.6) !important;
+        box-shadow:0 8px 24px rgba(0,0,0,0.8) !important;
+        margin-top:-8px !important;
       }}
       .pac-item {{
         color:#ccc !important;background:#0d1f1a !important;
-        padding:8px 12px !important;font-size:13px !important;
+        padding:10px 14px !important;font-size:13px !important;
         cursor:pointer !important;
         border-top:1px solid #1a3a2a !important;
       }}
       .pac-item:hover {{ background:#1a4a3a !important; }}
       .pac-item-query {{ color:white !important;font-size:13px !important; }}
-      .pac-matched {{ color:#1D9E75 !important; }}
+      .pac-matched {{ color:#1D9E75 !important;font-weight:600 !important; }}
+      .pac-icon {{ display:none !important; }}
     </style>
 
-    <div class='row'>
-      <div id='search-wrapper'>
-        <input id='pac-input' type='text'
-          placeholder='Search location in Gujarat...'
-          value='{current_address}' autocomplete='off'/>
-        <button id='clear-btn' onclick='clearInput()'>×</button>
-      </div>
-      <button onclick='toggleMap()'
-        style='flex:0 0 auto;background:#0A2E26;color:#9ecfc0;
-               border:1px solid #1D9E75;padding:9px 10px;
-               border-radius:8px;cursor:pointer;font-size:16px;
-               line-height:1' title='Pick on map'>📍</button>
-      <button onclick='submitAddress()'
-        style='flex:0 0 auto;background:#E74C3C;color:white;
-               border:none;padding:10px 14px;border-radius:8px;
-               cursor:pointer;font-size:13px;font-weight:600;
-               font-family:sans-serif;white-space:nowrap'>
-        Score →
-      </button>
+    <div id='input-wrap'>
+      <input id='pac-input' type='text'
+        placeholder='Search any location in Gujarat...'
+        value='{current_address}' autocomplete='off'/>
+      <button id='clear-btn' onclick='clearInput()'>×</button>
     </div>
 
-    <div id='map-container'>
-      <div id='map-div'></div>
-      <div id='hint'>Click map to select · Click 📍 to close</div>
-    </div>
-
+    <div id='map-div'></div>
     <div id='status'></div>
 
     <script>
       let map, marker, autocomplete, geocoder;
-      let mapVisible = false;
       const input  = document.getElementById('pac-input');
       const clrBtn = document.getElementById('clear-btn');
       const status = document.getElementById('status');
@@ -175,21 +155,15 @@ if mode == "Single Site":
         const pac = document.querySelector('.pac-container');
         if (pac && pac.children.length > 0 &&
             pac.style.display !== 'none') {{
-          const h = 52 + pac.offsetHeight + 10;
+          const h = 370 + pac.offsetHeight + 10;
           window.frameElement.style.height = h + 'px';
-        }} else if (!mapVisible) {{
-          window.frameElement.style.height = '52px';
+        }} else {{
+          window.frameElement.style.height = '370px';
         }}
       }});
       observer.observe(document.body, {{
         childList:true, subtree:true,
         attributes:true, attributeFilter:['style']
-      }});
-
-      input.addEventListener('blur', function() {{
-        setTimeout(function() {{
-          if (!mapVisible) window.frameElement.style.height = '52px';
-        }}, 300);
       }});
 
       function clearInput() {{
@@ -199,35 +173,64 @@ if mode == "Single Site":
         if (marker) marker.setMap(null);
       }}
 
-      function pushAddress(addr, doScore) {{
+      function pushAddress(addr) {{
         const url = new URL(window.parent.location.href);
         url.searchParams.set('address', addr);
-        if (doScore) {{
-          url.searchParams.set('do_score', '1');
-        }} else {{
-          url.searchParams.delete('do_score');
-        }}
         window.parent.history.replaceState({{}}, '', url.toString());
-        // Force Streamlit to re-read query params by clicking
-        // the hidden rerun trigger
-        const ev = new Event('popstate');
-        window.parent.dispatchEvent(ev);
-      }}
-
-      function submitAddress() {{
-        const addr = input.value.trim();
-        if (!addr) {{
-          status.textContent = 'Please enter an address first.';
-          status.style.color = '#E74C3C';
-          return;
-        }}
-        input.value = addr;
-        status.textContent = 'Submitting...';
-        pushAddress(addr, false);
       }}
 
       function initMap() {{
         geocoder = new google.maps.Geocoder();
+
+        // Default center: Ahmedabad
+        const defaultCenter = {{ lat:23.0225, lng:72.5714 }};
+
+        map = new google.maps.Map(
+          document.getElementById('map-div'), {{
+            center: defaultCenter,
+            zoom: 12,
+            mapTypeControl:false,
+            streetViewControl:false,
+            fullscreenControl:false,
+            zoomControl:true,
+            styles:[
+              {{elementType:'geometry',
+                stylers:[{{color:'#0d1f1a'}}]}},
+              {{elementType:'labels.text.fill',
+                stylers:[{{color:'#9ecfc0'}}]}},
+              {{elementType:'labels.text.stroke',
+                stylers:[{{color:'#0a1a14'}}]}},
+              {{featureType:'road',elementType:'geometry',
+                stylers:[{{color:'#1a3a2a'}}]}},
+              {{featureType:'road',elementType:'geometry.stroke',
+                stylers:[{{color:'#0d2a1a'}}]}},
+              {{featureType:'road.highway',elementType:'geometry',
+                stylers:[{{color:'#1D9E75'}}]}},
+              {{featureType:'water',elementType:'geometry',
+                stylers:[{{color:'#0d1f2a'}}]}},
+              {{featureType:'poi',elementType:'geometry',
+                stylers:[{{color:'#0d2a1a'}}]}},
+              {{featureType:'transit',elementType:'geometry',
+                stylers:[{{color:'#0d2a1a'}}]}}
+            ]
+          }}
+        );
+
+        // If address already set, show it on map
+        if ('{current_address}') {{
+          geocoder.geocode(
+            {{address: '{current_address}'}},
+            function(results, s) {{
+              if (s === 'OK' && results[0]) {{
+                const loc = results[0].geometry.location;
+                map.setCenter(loc);
+                map.setZoom(15);
+                placeMarker(loc, '{current_address}');
+              }}
+            }}
+          );
+        }}
+
         autocomplete = new google.maps.places.Autocomplete(input, {{
           componentRestrictions: {{ country:'in' }},
           bounds: new google.maps.LatLngBounds(
@@ -237,41 +240,20 @@ if mode == "Single Site":
           strictBounds: false,
           fields: ['formatted_address','geometry','name']
         }});
+
         autocomplete.addListener('place_changed', function() {{
           const place = autocomplete.getPlace();
           if (!place.geometry) return;
           const addr = place.formatted_address || place.name;
           input.value = addr;
           clrBtn.style.display = 'block';
-          status.textContent = '📍 ' + addr.substring(0,50);
-          pushAddress(addr, false);
-          if (map) {{
-            map.setCenter(place.geometry.location);
-            map.setZoom(16);
-            placeMarker(place.geometry.location, addr);
-          }}
+          status.textContent = '📍 ' + addr.substring(0,60);
+          map.setCenter(place.geometry.location);
+          map.setZoom(15);
+          placeMarker(place.geometry.location, addr);
+          pushAddress(addr);
         }});
-        map = new google.maps.Map(
-          document.getElementById('map-div'), {{
-            center: {{ lat:23.0225, lng:72.5714 }},
-            zoom: 12,
-            mapTypeControl:false,
-            streetViewControl:false,
-            fullscreenControl:false,
-            styles:[
-              {{elementType:'geometry',
-                stylers:[{{color:'#1a2a1a'}}]}},
-              {{elementType:'labels.text.fill',
-                stylers:[{{color:'#9ecfc0'}}]}},
-              {{elementType:'labels.text.stroke',
-                stylers:[{{color:'#0d1f1a'}}]}},
-              {{featureType:'road',elementType:'geometry',
-                stylers:[{{color:'#2a4a2a'}}]}},
-              {{featureType:'water',elementType:'geometry',
-                stylers:[{{color:'#0d1f2a'}}]}}
-            ]
-          }}
-        );
+
         map.addListener('click', function(e) {{
           geocoder.geocode({{location:e.latLng}},
             function(results, s) {{
@@ -279,11 +261,11 @@ if mode == "Single Site":
                 ? results[0].formatted_address
                 : e.latLng.lat().toFixed(6)+', '+
                   e.latLng.lng().toFixed(6)+', Gujarat, India';
-              placeMarker(e.latLng, addr);
               input.value = addr;
               clrBtn.style.display = 'block';
-              status.textContent = '📍 '+addr.substring(0,50);
-              pushAddress(addr, false);
+              status.textContent = '📍 '+addr.substring(0,60);
+              placeMarker(e.latLng, addr);
+              pushAddress(addr);
             }}
           );
         }});
@@ -293,26 +275,16 @@ if mode == "Single Site":
         if (marker) marker.setMap(null);
         marker = new google.maps.Marker({{
           position:position, map:map, title:addr,
+          animation: google.maps.Animation.DROP,
           icon:{{
             path:google.maps.SymbolPath.CIRCLE,
-            scale:10, fillColor:'#1D9E75', fillOpacity:1,
-            strokeColor:'#ffffff', strokeWeight:2
+            scale:12,
+            fillColor:'#1D9E75',
+            fillOpacity:1,
+            strokeColor:'#ffffff',
+            strokeWeight:2.5
           }}
         }});
-      }}
-
-      function toggleMap() {{
-        const container = document.getElementById('map-container');
-        mapVisible = !mapVisible;
-        container.style.display = mapVisible ? 'block' : 'none';
-        if (mapVisible) {{
-          setTimeout(function() {{
-            google.maps.event.trigger(map, 'resize');
-          }}, 100);
-          window.frameElement.style.height = '380px';
-        }} else {{
-          window.frameElement.style.height = '52px';
-        }}
       }}
     </script>
     <script
@@ -320,19 +292,14 @@ if mode == "Single Site":
       async defer></script>
     """
 
-    components.html(search_html, height=52, scrolling=False)
+    components.html(search_html, height=370, scrolling=False)
 
-    # Show confirmed address
-    if current_address:
-        st.markdown(
-            f"<div style='font-size:12px;color:#1D9E75;"
-            f"margin-bottom:6px'>📍 {current_address}</div>",
-            unsafe_allow_html=True,
-        )
-
-    # Streamlit Score button — this is the reliable trigger
+    # ── Score button ──────────────────────────────────────
     if st.button("Score This Site", type="primary",
                  use_container_width=True):
+        # Re-read address from query params in case updated by map
+        if "address" in st.query_params:
+            st.session_state.search_address = st.query_params["address"]
         addr = st.session_state.get("search_address", "").strip()
         if addr:
             with st.spinner("Analysing location..."):
@@ -349,10 +316,11 @@ if mode == "Single Site":
                 save_to_history(result)
         else:
             st.warning(
-                "Please search for a location first, "
-                "then click Score This Site."
+                "Please search or click on the map to select "
+                "a location first."
             )
 
+    # ── Results ───────────────────────────────────────────
     if st.session_state.result and \
             "error" not in st.session_state.result:
         result = st.session_state.result
