@@ -907,7 +907,7 @@ elif mode == "Compare N Sites":
         st.markdown("")
         with st.spinner("Preparing PDF..."):
             path = os.path.join(tempfile.gettempdir(),
-                                "best_site_report.pdf")
+                                "SiteIQ_best_site_report.pdf")
             generate_report(best, path)
             with open(path, "rb") as f:
                 pdf_bytes = f.read()

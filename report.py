@@ -417,9 +417,9 @@ def generate_report(result: dict, output_path: str = "siteiq_report.pdf") -> str
         "White space detected. Low competitor density means first-mover "
         "advantage is available. Customer acquisition will cost less."
     )
-    y -= 4
+    y -= 8
     body(LM, y, comp_txt, size=9, color=C_GREY)
-    y -= 20
+    y -= 28
 
     # Competitor detail table if available
     competitors = result.get("competitor_details", [])
@@ -502,7 +502,7 @@ def generate_report(result: dict, output_path: str = "siteiq_report.pdf") -> str
     if roi:
         y = H - 40
         y = section_title(y, "ROI & Investment Analysis")
-
+        y = y +20
         # Combined score banner
         banner_h = 70
         banner_y = y - banner_h
@@ -582,7 +582,7 @@ def generate_report(result: dict, output_path: str = "siteiq_report.pdf") -> str
     # ════════════════════════════════════════════════════
     y = H - 40
     y = section_title(y, "Final Recommendation")
-
+    y= y+20
     # Score banner
     banner_h = 80
     banner_y = y - banner_h
@@ -607,8 +607,9 @@ def generate_report(result: dict, output_path: str = "siteiq_report.pdf") -> str
     bm         = get_category_context(total, brand_type)
     stats      = bm["stats"]
     percentile = bm["percentile"]
-
+    y = y -10
     y = section_title(y, "Benchmark Comparison")
+    y=y+6
     y = kv(y, "Percentile rank",
            f"Better than {percentile}% of similar sites")
     y = kv(y, "Benchmark average score",
@@ -619,11 +620,52 @@ def generate_report(result: dict, output_path: str = "siteiq_report.pdf") -> str
            str(stats.get("count", 0)))
     y -= 4
     body(LM, y, bm.get("context", ""), size=9, color=C_GREY)
-    y -= 24
+    y -= 36
+
+    # Score contributions
+    from score_explainer import explain_scores
+    explanation = explain_scores(
+        scores=scores,
+        brand_type=result.get("brand_type", "restaurant"),
+        total_score=total,
+    )
+
+    y -= 6
+    y = section_title(y, "Score Contribution Analysis")
+    y=y+8
+    if explanation["narrative"]:
+        y = body(LM, y, explanation["narrative"],
+                 size=9, color=C_GREY)
+        y -= 8
+
+    for contrib in explanation["contributions"]:
+        score_c = (C_GREEN if contrib["score"] >= 65
+                   else C_AMBER if contrib["score"] >= 45 else C_RED)
+        delta_c = (C_GREEN if contrib["delta"] >= 0 else C_RED)
+        delta_s = (f"+{contrib['delta']}"
+                   if contrib["delta"] >= 0
+                   else str(contrib["delta"]))
+
+        txt(LM, y, contrib["label"], size=9,
+            bold=True, color=C_DARK)
+        txt(LM + 90, y, str(contrib["score"]),
+            size=9, bold=True, color=score_c)
+        txt(LM + 130, y,
+            f"wt:{contrib['weight_pct']}%",
+            size=8, color=C_GREY)
+        txt(LM + 175, y, f"contrib: {delta_s}",
+            size=8, bold=True, color=delta_c)
+        txt(LM + 260, y, contrib["insight"],
+            size=7, color=C_GREY)
+        y -= 16
+        score_bar(LM, y, CW * 0.5, 5, contrib["score"])
+        y -= 26
+    
+    y = y - 10
 
     # Risk flags
     y = section_title(y, "Key Risk Flags")
-
+    y=y+6
     risks = []
     if scores.get("competition", 100)   < 30:
         risks.append((True,
@@ -649,6 +691,7 @@ def generate_report(result: dict, output_path: str = "siteiq_report.pdf") -> str
 
     y -= 8
     y = section_title(y, "Methodology Note")
+    y=y+6
     method_txt = (
         "This report uses publicly available data from OpenStreetMap, "
         "Google Places API, and Census of India 2011. Scores are a "

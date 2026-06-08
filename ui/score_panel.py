@@ -11,6 +11,7 @@ from report import generate_report
 from benchmarks import get_category_context
 import os
 from roi_calculator import calculate_roi
+from score_explainer import explain_scores
 
 
 def render_score_breakdown(result: Dict[str, Any], brand_type: str) -> None:
@@ -175,132 +176,203 @@ def render_score_breakdown(result: Dict[str, Any], brand_type: str) -> None:
         ).add_to(m)
         st_folium(m, width="100%", height=400, returned_objects=[])
 
-    # Explainability & competitors
-    st.markdown("### Analysis Details")
-    col_risk, col_explain = st.columns(2)
-    with col_risk:
-        st.markdown("**Risk Assessment**")
-        risks = []
-        if scores["competition"] < 30:
-            risks.append("High competitor density within 500m")
-        if scores["demand"] < 40:
-            risks.append("Low residential population density")
-        if scores["footfall"] < 40:
-            risks.append("Few anchor stores within 500m")
-        if scores["accessibility"] < 40:
-            risks.append("Limited road connectivity")
-        if risks:
-            for r in risks:
-                st.markdown(
-                    f"<div style='background:#1a0e0e;border-left:3px solid #C0392B;padding:8px 12px;border-radius:0 6px 6px 0;font-size:12px;color:#ccc;margin-bottom:6px'>! {r}</div>",
-                    unsafe_allow_html=True,
-                )
-        else:
+    # ── Score Explainability ──────────────────────────────
+    st.markdown("### Why This Score?")
+
+    explanation = explain_scores(
+        scores=scores,
+        brand_type=brand_type,
+        total_score=total,
+    )
+
+    # Narrative summary
+    if explanation["narrative"]:
+        st.markdown(
+            f"<div style='background:#111;border-left:3px solid #1D9E75;"
+            f"padding:12px 16px;border-radius:0 8px 8px 0;"
+            f"font-size:13px;color:#ccc;margin-bottom:16px'>"
+            f"{explanation['narrative']}</div>",
+            unsafe_allow_html=True,
+        )
+
+    # Contribution table
+    contribs = explanation["contributions"]
+
+    # Build HTML table
+    rows_html = ""
+    for c in contribs:
+        score_col = (
+            "#1D9E75" if c["score"] >= 65
+            else "#BA7517" if c["score"] >= 45
+            else "#C0392B"
+        )
+        delta_col = "#1D9E75" if c["delta"] >= 0 else "#C0392B"
+        delta_str = (
+            f"+{c['delta']}" if c["delta"] >= 0
+            else str(c["delta"])
+        )
+        vs_avg_str = (
+            f"+{c['vs_avg']}" if c["vs_avg"] >= 0
+            else str(c["vs_avg"])
+        )
+        vs_avg_col = "#1D9E75" if c["vs_avg"] >= 0 else "#C0392B"
+
+        # Bar showing score vs average
+        bar_score_w = int(c["score"])
+        bar_avg_w   = int(c["avg_score"])
+
+        rows_html += f"""
+        <tr>
+          <td style='padding:10px 12px;color:white;
+                     font-weight:500;min-width:130px'>
+            {c['label']}
+          </td>
+          <td style='padding:10px 12px;text-align:center;
+                     color:{score_col};font-weight:700;
+                     font-size:15px'>
+            {c['score']}
+          </td>
+          <td style='padding:10px 24px;min-width:160px'>
+            <div style='position:relative;height:8px;
+                        background:#222;border-radius:4px'>
+              <div style='position:absolute;left:0;top:0;
+                          width:{bar_avg_w}%;height:8px;
+                          background:#333;border-radius:4px'></div>
+              <div style='position:absolute;left:0;top:0;
+                          width:{bar_score_w}%;height:8px;
+                          background:{score_col};border-radius:4px;
+                          opacity:0.85'></div>
+              <div style='position:absolute;left:{bar_avg_w}%;
+                          top:-3px;width:2px;height:14px;
+                          background:#888'></div>
+            </div>
+            <div style='font-size:9px;color:#555;margin-top:3px'>
+              avg {c['avg_score']}
+            </div>
+          </td>
+          <td style='padding:10px 12px;text-align:center;
+                     color:#888;font-size:12px'>
+            {c['weight_pct']}%
+          </td>
+          <td style='padding:10px 12px;text-align:center;
+                     color:{delta_col};font-weight:600'>
+            {delta_str}
+          </td>
+          <td style='padding:10px 12px;text-align:center;
+                     color:{vs_avg_col};font-size:12px'>
+            {vs_avg_str} vs avg
+          </td>
+          <td style='padding:10px 12px;font-size:11px;
+                     color:#666;max-width:180px'>
+            {c['insight']}
+          </td>
+        </tr>"""
+
+    explainer_html = f"""
+    <!DOCTYPE html><html><head>
+    <style>
+      body{{margin:0;background:transparent;font-family:sans-serif}}
+      table{{width:100%;border-collapse:collapse;font-size:13px}}
+      thead tr{{background:#0A2E26}}
+      th{{padding:10px 12px;color:#9ecfc0;font-size:10px;
+          letter-spacing:.5px;text-align:center;font-weight:600}}
+      th:first-child{{text-align:left}}
+      tbody tr{{border-bottom:1px solid #1a1a1a}}
+      tbody tr:hover{{background:#0d1f1a}}
+    </style></head><body>
+    <table>
+      <thead><tr>
+        <th style='text-align:left'>VARIABLE</th>
+        <th>SCORE</th>
+        <th style='text-align:left;padding-left:24px'>
+          SCORE vs AVERAGE
+        </th>
+        <th>WEIGHT</th>
+        <th>CONTRIBUTION</th>
+        <th>VS AVG</th>
+        <th style='text-align:left'>INSIGHT</th>
+      </tr></thead>
+      <tbody>{rows_html}</tbody>
+    </table>
+    </body></html>"""
+
+    components.html(
+        explainer_html,
+        height=60 + len(contribs) * 58
+    )
+
+    # Risk + boost highlights
+    col_boost, col_drag = st.columns(2)
+
+    with col_boost:
+        if explanation["biggest_boost"]:
+            b = explanation["biggest_boost"]
             st.markdown(
-                "<div style='background:#0d1f1a;border-left:3px solid #1D9E75;padding:8px 12px;border-radius:0 6px 6px 0;font-size:12px;color:#9ecfc0'>No significant risk flags at this location</div>",
+                f"<div style='background:#0d1f1a;border:1px solid #1D9E75;"
+                f"border-radius:8px;padding:14px'>"
+                f"<div style='font-size:10px;color:#9ecfc0;"
+                f"letter-spacing:1px;margin-bottom:4px'>"
+                f"BIGGEST STRENGTH</div>"
+                f"<div style='font-size:16px;font-weight:700;"
+                f"color:#1D9E75'>{b['label']}</div>"
+                f"<div style='font-size:13px;color:#ccc;margin-top:4px'>"
+                f"Score {b['score']} — "
+                f"{abs(b['vs_avg']):.0f} pts above average</div>"
+                f"<div style='font-size:11px;color:#888;margin-top:6px'>"
+                f"{b['insight']}</div>"
+                f"</div>",
                 unsafe_allow_html=True,
             )
 
-    with col_explain:
-        st.markdown("**What we found**")
-        raw = result.get("raw", {})
-
-        def mini_row(label, value, note):
+    with col_drag:
+        if explanation["biggest_drag"]:
+            d = explanation["biggest_drag"]
             st.markdown(
-                f"<div style='border-bottom:1px solid #1a1a1a;padding:7px 0;margin-bottom:2px'><div style='display:flex;justify-content:space-between'><span style='font-size:11px;color:#888'>{label}</span><span style='font-size:13px;font-weight:700;color:white'>{value}</span></div><div style='font-size:10px;color:#555;margin-top:1px'>{note}</div></div>",
+                f"<div style='background:#1a0e0e;border:1px solid #C0392B;"
+                f"border-radius:8px;padding:14px'>"
+                f"<div style='font-size:10px;color:#e08080;"
+                f"letter-spacing:1px;margin-bottom:4px'>"
+                f"BIGGEST DRAG</div>"
+                f"<div style='font-size:16px;font-weight:700;"
+                f"color:#C0392B'>{d['label']}</div>"
+                f"<div style='font-size:13px;color:#ccc;margin-top:4px'>"
+                f"Score {d['score']} — "
+                f"{abs(d['vs_avg']):.0f} pts below average</div>"
+                f"<div style='font-size:11px;color:#888;margin-top:6px'>"
+                f"{d['insight']}</div>"
+                f"</div>",
                 unsafe_allow_html=True,
             )
 
-        method = raw.get("demand_method", "osm_buildings")
-        if method == "census_2011":
-            mini_row(
-                "Est. population within 1km",
-                f"{raw.get('demand_population',0):,}",
-                f"Census 2011 ward data · {raw.get('demand_households',0):,} households",
-            )
-            wards = raw.get("demand_wards", [])
-            if wards:
-                ward_names = " · ".join(w["name"] for w in wards[:3])
-                mini_row("Contributing wards", str(len(wards)), ward_names)
-        else:
-            mini_row(
-                "Residential buildings within 1km",
-                f"{raw.get('demand_buildings',0):,}",
-                "OpenStreetMap buildings (Census data unavailable)",
-            )
-            mini_row(
-                "Footfall anchors",
-                str(
-                    sum(raw.get("footfall_anchors", {}).values())
-                    if raw.get("footfall_anchors")
-                    else 0
-                ),
-                "supermarkets, hospitals, schools within 500m",
-            )
-            mini_row(
-                "Competitors found",
-                str(raw.get("competitor_count", 0)),
-                "weighted by review count + rating",
-            )
-            mini_row(
-                "Road intersections",
-                str(raw.get("intersections", 0)),
-                "within 300m drive network",
-            )
-            mini_row(
-                "Commercial places",
-                str(raw.get("catchment_places", 0)),
-                "shops, cafes within 1km",
-            )
-            spending = raw.get("spending_data", {})
-            avg_p = spending.get("avg_price_level")
-            mini_row(
-                "Avg price level",
-                f"{avg_p}/4.0" if avg_p else "N/A",
-                f"{spending.get('sample_size',0)} places sampled",
-            )
+    # Risk assessment below
+    st.markdown("### Risk Assessment")
+    risks = []
+    if scores.get("competition", 100)   < 30:
+        risks.append("High competitor density within 500m — market may be saturated")
+    if scores.get("demand", 100)        < 40:
+        risks.append("Low residential population density — walk-in base limited")
+    if scores.get("footfall", 100)      < 40:
+        risks.append("Few anchor stores within 500m")
+    if scores.get("accessibility", 100) < 40:
+        risks.append("Limited road connectivity")
 
-    if result.get("competitor_details"):
-        st.markdown("### Nearby Competitors")
-        competitors = sorted(
-            result["competitor_details"], key=lambda x: x["strength"], reverse=True
-        )[:8]
-        col_left, col_comp, col_right = st.columns([1, 10, 1])
-        with col_comp:
-            for comp in competitors:
-                strength = comp["strength"]
-                bar_color2 = (
-                    "#C0392B"
-                    if strength > 0.6
-                    else "#BA7517" if strength > 0.3 else "#1D9E75"
-                )
-                bar_w = int(strength * 100)
-                stars = "★" * int(round(comp["rating"])) + "☆" * (
-                    5 - int(round(comp["rating"]))
-                )
-                rev_label = (
-                    f"{comp['reviews']:,} reviews"
-                    if comp["reviews"] > 0
-                    else "No reviews"
-                )
-                comp_name = comp["name"]
-                label_text = (
-                    "Strong"
-                    if strength > 0.6
-                    else "Moderate" if strength > 0.3 else "Weak"
-                )
-                html = (
-                    "<div style='background:#111;border:1px solid #222;border-radius:8px;padding:10px 14px;margin-bottom:6px'>"
-                    f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px'>"
-                    f"<span style='font-size:13px;font-weight:600;color:white'>{comp_name}</span>"
-                    f"<span style='font-size:11px;color:#888'>{stars} &nbsp;{rev_label}</span></div>"
-                    "<div style='display:flex;align-items:center;gap:10px'>"
-                    f"<div style='flex:1;background:#333;border-radius:4px;height:6px'>"
-                    f"<div style='width:{bar_w}%;background:{bar_color2};height:6px;border-radius:4px'></div></div>"
-                    f"<span style='font-size:11px;color:{bar_color2};min-width:80px;text-align:right'>{label_text} competitor</span>"
-                    "</div></div>"
-                )
-                st.markdown(html, unsafe_allow_html=True)
+    if risks:
+        for r in risks:
+            st.markdown(
+                f"<div style='background:#1a0e0e;border-left:3px solid "
+                f"#C0392B;padding:8px 12px;border-radius:0 6px 6px 0;"
+                f"font-size:12px;color:#ccc;margin-bottom:6px'>"
+                f"! {r}</div>",
+                unsafe_allow_html=True,
+            )
+    else:
+        st.markdown(
+            "<div style='background:#0d1f1a;border-left:3px solid #1D9E75;"
+            "padding:8px 12px;border-radius:0 6px 6px 0;"
+            "font-size:12px;color:#9ecfc0'>"
+            "No significant risk flags at this location</div>",
+            unsafe_allow_html=True,
+        )
 
     # ── ROI Calculator ────────────────────────────────────
     st.markdown("### ROI Analysis")
@@ -492,7 +564,7 @@ def render_score_breakdown(result: Dict[str, Any], brand_type: str) -> None:
     st.download_button(
         label="Download PDF Report",
         data=pdf_bytes,
-        file_name="sitescore_report.pdf",
+        file_name="SiteIQ_report.pdf",
         mime="application/pdf",
         use_container_width=True,
     )
