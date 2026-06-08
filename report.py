@@ -154,30 +154,46 @@ def generate_report(result: dict, output_path: str = "siteiq_report.pdf") -> str
     # Site address block
     txt(LM, H - 116, "SITE INTELLIGENCE REPORT", size=8,
         color=C_GREY, bold=False)
-    txt(LM, H - 134, result.get("address", "Unknown Address"),
-        size=15, bold=True, color=C_BLACK)
-    txt(LM, H - 152,
+    # Word-wrap long addresses
+    addr_lines = wrap(result.get("address", "Unknown Address"), CW, size=14)
+    addr_y = H - 134
+    for addr_line in addr_lines:
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(C_BLACK)
+        c.drawString(LM, addr_y, addr_line)
+        addr_y -= 18
+    txt(LM, addr_y - 6,
         f"{result.get('lat', 0):.4f} N,  {result.get('lng', 0):.4f} E  |  Gujarat, India",
         size=9, color=C_GREY)
-    txt(LM, H - 168,
+    txt(LM, addr_y - 20,
         f"Brand category: {result.get('brand_type', 'restaurant').title()}",
         size=9, color=C_GREY)
 
-    hline(H - 178, color=C_LINE)
+    hline(addr_y - 30, color=C_LINE)
 
     # Score card
-    card_y = H - 340
-    box(LM + CW * 0.1, card_y, CW * 0.8, 148, fill=C_GREEN2, r=8)
+    card_h = 160
+    card_y = addr_y - 200   # dynamic — sits below coordinates
+    box(LM + CW * 0.1, card_y, CW * 0.8, card_h, fill=C_GREEN2, r=8)
 
-    txt(cx, card_y + 110, str(total), size=58, bold=True,
+    # Upper section: score number
+    # Large text baseline needs to be placed higher than mid
+    upper_mid = card_y + card_h * 0.68
+    txt(cx, upper_mid, str(total), size=52, bold=True,
         color=score_color, align="center")
-    txt(cx, card_y + 88, "out of 100", size=10,
+    txt(cx, upper_mid - 22, "out of 100", size=9,
         color=C_GREY, align="center")
-    hline(card_y + 78, color=C_LINE,
+
+    # Divider
+    divider_y = card_y + card_h * 0.44
+    hline(divider_y, color=C_LINE,
           x0=LM + CW * 0.2, x1=LM + CW * 0.8)
-    txt(cx, card_y + 60, verdict, size=14, bold=True,
+
+    # Lower section: verdict and recommendation
+    lower_mid = card_y + card_h * 0.28
+    txt(cx, lower_mid, verdict, size=12, bold=True,
         color=score_color, align="center")
-    txt(cx, card_y + 40, recommend, size=9,
+    txt(cx, lower_mid - 18, recommend, size=9,
         color=C_GREY, align="center")
 
     # Mini score pills
