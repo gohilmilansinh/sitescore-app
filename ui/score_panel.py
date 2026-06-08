@@ -9,6 +9,7 @@ from streamlit_folium import st_folium
 import streamlit.components.v1 as components
 from report import generate_report
 from benchmarks import get_category_context
+import os
 
 
 def render_score_breakdown(result: Dict[str, Any], brand_type: str) -> None:
@@ -303,7 +304,13 @@ def render_score_breakdown(result: Dict[str, Any], brand_type: str) -> None:
     # PDF
     st.markdown("---")
     with st.spinner("Preparing PDF report..."):
-        path = f"/tmp/{result['address'][:20].replace(' ','_')}_report.pdf"
+        import tempfile
+        safe_name = "".join(
+            c for c in result["address"][:20]
+            if c.isalnum() or c in (" ", "-", "_")
+        ).strip().replace(" ", "_")
+        path = os.path.join(tempfile.gettempdir(),
+                            f"{safe_name}_report.pdf")
         generate_report(result, path)
         with open(path, "rb") as f:
             pdf_bytes = f.read()

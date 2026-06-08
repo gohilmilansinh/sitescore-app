@@ -10,6 +10,7 @@ import time
 import streamlit.components.v1 as components
 from persistence import load_history, save_to_history, clear_history
 import os
+import tempfile
 
 st.set_page_config(
     page_title="SiteIQ — Retail Location Intelligence",
@@ -905,7 +906,8 @@ elif mode == "Compare N Sites":
         # PDF for best site
         st.markdown("")
         with st.spinner("Preparing PDF..."):
-            path = "/tmp/best_site_report.pdf"
+            path = os.path.join(tempfile.gettempdir(),
+                                "best_site_report.pdf")
             generate_report(best, path)
             with open(path, "rb") as f:
                 pdf_bytes = f.read()
