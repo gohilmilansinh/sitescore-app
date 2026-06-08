@@ -4,8 +4,8 @@ from reportlab.lib import colors
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from datetime import datetime
-import math
 from benchmarks import get_category_context
+import math
 
 # ── Colour palette ────────────────────────────────────────
 C_DARK    = colors.HexColor("#0A2E26")
