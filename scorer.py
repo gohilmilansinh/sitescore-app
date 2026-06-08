@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from typing import Any, Dict, List, Tuple
+import streamlit as st
 
 import googlemaps
 import osmnx as ox
@@ -101,7 +102,11 @@ def geocode(address: str) -> Tuple[Any, Any]:
         return None, None
 
 
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+
+try:
+    GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
+except Exception:
+    GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 if GOOGLE_API_KEY:
     gmaps = googlemaps.Client(key=GOOGLE_API_KEY)
 else:

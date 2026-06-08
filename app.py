@@ -60,7 +60,10 @@ if st.session_state.compared is not None:
 # ════════════════════════════════════════════════════════════
 if mode == "Single Site":
 
-    GKEY = os.environ.get("GOOGLE_API_KEY", "")
+    try:
+        GKEY = st.secrets.get("GOOGLE_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
+    except Exception:
+        GKEY = os.environ.get("GOOGLE_API_KEY", "")
 
     if "address" in st.query_params:
         st.session_state.search_address = st.query_params["address"]
@@ -334,7 +337,10 @@ if mode == "Single Site":
 # ════════════════════════════════════════════════════════════
 elif mode == "Compare N Sites":
 
-    GKEY = os.environ.get("GOOGLE_API_KEY", "")
+    try:
+        GKEY = st.secrets.get("GOOGLE_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
+    except Exception:
+        GKEY = os.environ.get("GOOGLE_API_KEY", "")
 
     st.markdown("#### Compare Multiple Sites")
 
