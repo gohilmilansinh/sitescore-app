@@ -2,10 +2,9 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import mm
-from reportlab.lib.utils import ImageReader
 from datetime import datetime
 from benchmarks import get_category_context
-import math
+
 
 # ── Colour palette ────────────────────────────────────────
 C_DARK    = colors.HexColor("#0A2E26")
@@ -522,7 +521,6 @@ def generate_report(result: dict, output_path: str = "siteiq_report.pdf") -> str
     y = banner_y - 20
 
     # Benchmark context
-    from benchmarks import get_category_context
     brand_type = result.get("brand_type", "restaurant")
     bm         = get_category_context(total, brand_type)
     stats      = bm["stats"]
