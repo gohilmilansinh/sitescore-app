@@ -1,7 +1,3 @@
-from __future__ import annotations
-
-from typing import Any, Dict
-
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -9,6 +5,7 @@ from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from datetime import datetime
 import math
+from benchmarks import get_category_context
 
 # ── Colour palette ────────────────────────────────────────
 C_DARK    = colors.HexColor("#0A2E26")
@@ -568,17 +565,15 @@ def generate_report(result: dict, output_path: str = "siteiq_report.pdf") -> str
     body(LM, y, method_txt, size=8, color=C_GREY)
 
     # Footer bar
-    y -= 30
-    box(0, 0, W, 40, fill=C_DARK, r=0)
-    txt(LM, 14,
+    box(0, 0, W, 36, fill=C_DARK, r=0)
+    txt(LM, 22,
         "SiteIQ Analytics  |  Ahmedabad, Gujarat  |  "
         "Confidential — prepared exclusively for client use",
         size=8, color=C_GREY)
-    txt(W - RM, 14,
+    txt(W - RM, 22,
         f"Generated {datetime.now().strftime('%d %b %Y, %I:%M %p')}",
         size=8, color=C_GREY, align="right")
-
-    footer(5)
+    txt(cx, 10, "Page 5", size=7, color=C_GREY, align="center")
     c.showPage()
     c.save()
     print(f"Report saved: {output_path}")
