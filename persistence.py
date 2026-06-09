@@ -28,28 +28,38 @@ def _get_session_id() -> str:
 def load_history() -> List[Dict[str, Any]]:
     """Load history — Supabase if configured, else local file."""
     if _SUPABASE_AVAILABLE and _db.is_configured():
-        session_id = _get_session_id()
-        return _db.get_history(session_id)
-    else:
-        return _load_local_history()
+        try:
+            session_id = _get_session_id()
+            return _db.get_history(session_id)
+        except Exception as e:
+            logger.warning("Supabase load failed, using local: %s", e)
+            return _load_local_history()
+    return _load_local_history()
 
 
 def save_to_history(result: Dict[str, Any]) -> None:
     """Save scored site to history."""
     if _SUPABASE_AVAILABLE and _db.is_configured():
-        session_id = _get_session_id()
-        _db.save_site(session_id, result)
-    else:
-        _save_local_history(result)
+        try:
+            session_id = _get_session_id()
+            _db.save_site(session_id, result)
+            return
+        except Exception as e:
+            logger.warning("Supabase save failed, using local: %s", e)
+    _save_local_history(result)
 
 
 def clear_history() -> None:
     """Clear all history for this session."""
     if _SUPABASE_AVAILABLE and _db.is_configured():
-        session_id = _get_session_id()
-        _db.clear_session_history(session_id)
-    else:
-        _clear_local_history()
+        try:
+            session_id = _get_session_id()
+            _db.clear_session_history(session_id)
+            return
+        except Exception as e:
+            logger.warning(
+                "Supabase clear failed, using local: %s", e)
+    _clear_local_history()
 
 
 def update_notes(record_id: str, notes: str) -> bool:

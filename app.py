@@ -1326,6 +1326,8 @@ elif mode == "History":
         )
 
     history = load_history()
+    st.write(f"Debug — history count: {len(history)}")
+    st.write(f"Debug — db connected: {is_db_connected()}")
 
     if not history:
         st.markdown(
