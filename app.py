@@ -11,6 +11,7 @@ import streamlit.components.v1 as components
 from persistence import load_history, save_to_history, clear_history
 import os
 import tempfile
+import pandas as pd
 
 st.set_page_config(
     page_title="SiteIQ — Retail Location Intelligence",
@@ -23,7 +24,7 @@ render_header()
 # ── Mode selector ─────────────────────────────────────────
 mode = st.radio(
     "Mode",
-    ["Single Site", "Compare N Sites", "History"],
+    ["Single Site", "Compare N Sites", "Batch Upload", "History"],
     horizontal=True,
     label_visibility="collapsed",
 )
@@ -35,6 +36,8 @@ if "compared" not in st.session_state:
     st.session_state.compared = None
 if "search_address" not in st.session_state:
     st.session_state.search_address = ""
+if "batch_results" not in st.session_state:
+    st.session_state.batch_results = None
 
 # Clear any stale error results from previous sessions
 if st.session_state.result is not None:
@@ -920,6 +923,365 @@ elif mode == "Compare N Sites":
         )
         st.caption(
             "SiteScore Analytics · Gujarat · " "OpenStreetMap + Google Places API"
+        )
+
+
+# ════════════════════════════════════════════════════════════
+# BATCH UPLOAD MODE
+# ════════════════════════════════════════════════════════════
+elif mode == "Batch Upload":
+    from batch_scorer import (
+        validate_csv, score_batch,
+        results_to_dataframe
+    )
+    import io
+
+    st.markdown("### Batch Site Scoring")
+    st.markdown(
+        "<div style='font-size:13px;color:#888;margin-bottom:16px'>"
+        "Upload a CSV with multiple addresses. Score all at once. "
+        "Export results to CSV or download PDF for the best site. "
+        "Maximum 20 sites per batch.</div>",
+        unsafe_allow_html=True,
+    )
+
+    # Download template
+    template_csv = (
+        "address,brand_type,monthly_rent,notes\n"
+        "Bopal, Ahmedabad, Gujarat,restaurant,80000,"
+        "Near D-Mart\n"
+        "CG Road, Ahmedabad, Gujarat,restaurant,120000,"
+        "Main commercial street\n"
+        "Prahlad Nagar, Ahmedabad, Gujarat,restaurant,"
+        "95000,Corporate hub\n"
+    )
+    st.download_button(
+        label="Download CSV Template",
+        data=template_csv,
+        file_name="siteiq_template.csv",
+        mime="text/csv",
+    )
+
+    uploaded_file = st.file_uploader(
+        "Upload your sites CSV",
+        type=["csv"],
+        help="CSV must have an 'address' column. "
+             "Optional: brand_type, monthly_rent, notes",
+    )
+
+    if uploaded_file:
+        try:
+            df = pd.read_csv(uploaded_file)
+        except Exception as e:
+            st.error(f"Could not read CSV: {e}")
+            st.stop()
+
+        is_valid, msg = validate_csv(df)
+        if not is_valid:
+            st.error(msg)
+            st.stop()
+
+        # Preview
+        st.markdown(f"**{len(df)} sites ready to score**")
+        st.dataframe(
+            df[["address"] + [
+                c for c in
+                ["brand_type", "monthly_rent", "notes"]
+                if c in df.columns
+            ]],
+            use_container_width=True,
+            height=min(200, 50 + len(df) * 35),
+        )
+
+        if st.button(
+            f"Score All {len(df)} Sites",
+            type="primary",
+            use_container_width=True,
+        ):
+            progress_bar = st.progress(
+                0, text="Starting batch scoring...")
+            status_text  = st.empty()
+            results_container = st.empty()
+
+            scored = []
+
+            def update_progress(current, total, address):
+                pct = current / total
+                progress_bar.progress(
+                    pct,
+                    text=f"Scoring {current}/{total}: "
+                         f"{address[:40]}..."
+                )
+                status_text.markdown(
+                    f"<div style='font-size:12px;color:#888'>"
+                    f"Scored {current} of {total} sites</div>",
+                    unsafe_allow_html=True,
+                )
+
+            with st.spinner("Batch scoring in progress..."):
+                scored = score_batch(df, update_progress)
+
+            progress_bar.empty()
+            status_text.empty()
+
+            if scored:
+                st.session_state.batch_results = scored
+                st.success(
+                    f"Scored {len(scored)} sites successfully."
+                )
+            else:
+                st.error("No sites could be scored.")
+
+    # Show batch results
+    if "batch_results" in st.session_state and \
+            st.session_state.batch_results:
+        results = st.session_state.batch_results
+        scored  = [r for r in results
+                   if r.get("status") == "scored"]
+        errors  = [r for r in results
+                   if r.get("status") == "error"]
+
+        st.markdown("---")
+        st.markdown(
+            f"### Results — {len(scored)} scored"
+            + (f", {len(errors)} failed" if errors else "")
+        )
+
+        # Summary metrics
+        if scored:
+            avg_score = round(
+                sum(r["total_score"] for r in scored) /
+                len(scored), 1
+            )
+            strong   = sum(
+                1 for r in scored
+                if r["verdict"] == "Strong"
+            )
+            moderate = sum(
+                1 for r in scored
+                if r["verdict"] == "Moderate"
+            )
+            weak     = sum(
+                1 for r in scored
+                if r["verdict"] == "Weak"
+            )
+
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("Sites Scored",   len(scored))
+            c2.metric("Average Score",  avg_score)
+            c3.metric("Strong Sites",   strong)
+            c4.metric("Moderate Sites", moderate)
+            c5.metric("Weak Sites",     weak)
+
+        # Results table
+        rank_colors = [
+            "#1D9E75", "#1D9E75", "#1D9E75",
+            "#BA7517", "#BA7517",
+            "#C0392B", "#C0392B",
+        ]
+
+        rows_html = ""
+        for i, r in enumerate(scored):
+            score = r["total_score"]
+            col   = (
+                "#1D9E75" if score >= 65
+                else "#BA7517" if score >= 45
+                else "#C0392B"
+            )
+
+            def sc(s):
+                if s == "":
+                    return "<td style='padding:8px;color:#555;" \
+                           "text-align:center'>—</td>"
+                v = float(s) if s else 0
+                c = ("#1D9E75" if v >= 65
+                     else "#BA7517" if v >= 45
+                     else "#C0392B")
+                return (
+                    f"<td style='padding:8px;text-align:center;"
+                    f"color:{c};font-weight:600'>{s}</td>"
+                )
+
+            has_roi = r.get("monthly_rent", 0) > 0
+            roi_cells = ""
+            if has_roi:
+                roi_cells = (
+                    f"<td style='padding:8px;text-align:center;"
+                    f"color:#9ecfc0'>"
+                    f"Rs.{r.get('monthly_rent',0):,.0f}</td>"
+                    f"<td style='padding:8px;text-align:center;"
+                    f"color:#1D9E75'>"
+                    f"Rs.{r.get('monthly_profit',0):,.0f}</td>"
+                    f"<td style='padding:8px;text-align:center;"
+                    f"color:{col}'>"
+                    f"{r.get('payback_months',0):.0f}mo</td>"
+                )
+
+            rows_html += (
+                f"<tr style='border-bottom:1px solid #1a1a1a'>"
+                f"<td style='padding:8px 12px;font-weight:700;"
+                f"color:#9ecfc0'>#{i+1}</td>"
+                f"<td style='padding:8px;color:white;"
+                f"max-width:200px'>"
+                f"{r['address'][:45]}</td>"
+                f"<td style='padding:8px;text-align:center;"
+                f"color:{col};font-weight:700;font-size:15px'>"
+                f"{score}</td>"
+                f"<td style='padding:8px;text-align:center;"
+                f"color:{col};font-weight:600'>"
+                f"{r['verdict']}</td>"
+                + sc(r.get("demand", ""))
+                + sc(r.get("footfall", ""))
+                + sc(r.get("competition", ""))
+                + sc(r.get("accessibility", ""))
+                + sc(r.get("catchment", ""))
+                + sc(r.get("spending_power", ""))
+                + roi_cells
+                + f"<td style='padding:8px;color:#555;"
+                f"font-size:11px'>{r.get('notes','')}</td>"
+                f"</tr>"
+            )
+
+        has_any_roi = any(
+            r.get("monthly_rent", 0) > 0 for r in scored
+        )
+        roi_headers = ""
+        if has_any_roi:
+            roi_headers = (
+                "<th>RENT</th>"
+                "<th>PROFIT</th>"
+                "<th>PAYBACK</th>"
+            )
+
+        table_html = f"""<!DOCTYPE html><html><head>
+        <style>
+          body{{margin:0;background:transparent;
+               font-family:sans-serif;font-size:12px}}
+          table{{width:100%;border-collapse:collapse}}
+          thead tr{{background:#0A2E26}}
+          th{{padding:10px 8px;color:#9ecfc0;font-size:10px;
+              letter-spacing:.5px;text-align:center;
+              font-weight:600;white-space:nowrap}}
+          th:nth-child(2){{text-align:left}}
+          .wrap{{overflow-x:auto;
+                 -webkit-overflow-scrolling:touch;
+                 border-radius:10px;
+                 border:1px solid #333}}
+        </style></head><body>
+        <div class="wrap"><table>
+          <thead><tr>
+            <th>#</th>
+            <th style='text-align:left'>ADDRESS</th>
+            <th>SCORE</th><th>VERDICT</th>
+            <th>DEMAND</th><th>FOOTFALL</th>
+            <th>COMP</th><th>ACCESS</th>
+            <th>CATCH</th><th>SPEND</th>
+            {roi_headers}
+            <th>NOTES</th>
+          </tr></thead>
+          <tbody style='background:#111;color:white'>
+            {rows_html}
+          </tbody>
+        </table></div></body></html>"""
+
+        components.html(
+            table_html,
+            height=60 + len(scored) * 48,
+        )
+
+        # Error rows
+        if errors:
+            st.markdown("**Failed addresses:**")
+            for e in errors:
+                st.markdown(
+                    f"<div style='background:#1a0e0e;"
+                    f"border-left:3px solid #C0392B;"
+                    f"padding:8px 12px;border-radius:0 6px 6px 0;"
+                    f"font-size:12px;color:#ccc;margin-bottom:4px'>"
+                    f"! {e['address']} — "
+                    f"{e.get('error_msg','Failed')}</div>",
+                    unsafe_allow_html=True,
+                )
+
+        # Export CSV
+        st.markdown("---")
+        col_csv, col_pdf = st.columns(2)
+
+        with col_csv:
+            export_df  = results_to_dataframe(results)
+            csv_buffer = io.StringIO()
+            export_df.to_csv(csv_buffer, index=False)
+            st.download_button(
+                label="Export Results to CSV",
+                data=csv_buffer.getvalue(),
+                file_name="siteiq_batch_results.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+
+        with col_pdf:
+            if scored:
+                best = scored[0]["full_result"]
+                with st.spinner("Preparing PDF for best site..."):
+                    path = os.path.join(
+                        tempfile.gettempdir(),
+                        "batch_best_report.pdf"
+                    )
+                    generate_report(best, path)
+                    with open(path, "rb") as f:
+                        pdf_bytes = f.read()
+                st.download_button(
+                    label=f"PDF Report — Best Site "
+                          f"({scored[0]['address'][:25]}...)",
+                    data=pdf_bytes,
+                    file_name="siteiq_best_site_report.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
+
+        # Map of all scored sites
+        if len(scored) >= 2:
+            st.markdown("### All Sites on Map")
+            center_lat = sum(
+                r["full_result"]["lat"] for r in scored
+            ) / len(scored)
+            center_lng = sum(
+                r["full_result"]["lng"] for r in scored
+            ) / len(scored)
+            m = folium.Map(
+                location=[center_lat, center_lng],
+                zoom_start=11,
+                tiles="CartoDB positron",
+            )
+            rank_cols = [
+                "#1D9E75", "#1D9E75", "#BA7517",
+                "#BA7517", "#C0392B", "#C0392B",
+            ]
+            for i, r in enumerate(scored[:10]):
+                fr  = r["full_result"]
+                col = rank_cols[min(i, len(rank_cols) - 1)]
+                folium.CircleMarker(
+                    location=[fr["lat"], fr["lng"]],
+                    radius=14,
+                    color="#0A2E26",
+                    fill=True,
+                    fill_color=col,
+                    fill_opacity=0.9,
+                    popup=folium.Popup(
+                        f"<b>#{i+1} {r['address']}</b>"
+                        f"<br>Score: {r['total_score']}/100"
+                        f"<br>{r['verdict']}",
+                        max_width=240,
+                    ),
+                ).add_to(m)
+            st_folium(
+                m, width="100%",
+                height=420, returned_objects=[]
+            )
+
+        st.caption(
+            "SiteIQ Analytics · Gujarat · "
+            "OpenStreetMap + Google Places API"
         )
 
 
