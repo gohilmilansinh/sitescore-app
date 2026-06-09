@@ -948,11 +948,11 @@ elif mode == "Batch Upload":
     # Download template
     template_csv = (
         "address,brand_type,monthly_rent,notes\n"
-        "Bopal, Ahmedabad, Gujarat,restaurant,80000,"
+        "'Bopal, Ahmedabad, Gujarat',restaurant,80000,"
         "Near D-Mart\n"
-        "CG Road, Ahmedabad, Gujarat,restaurant,120000,"
+        "'CG Road, Ahmedabad, Gujarat',restaurant,120000,"
         "Main commercial street\n"
-        "Prahlad Nagar, Ahmedabad, Gujarat,restaurant,"
+        "'Prahlad Nagar, Ahmedabad', Gujarat,restaurant,"
         "95000,Corporate hub\n"
     )
     st.download_button(
