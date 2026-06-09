@@ -1287,7 +1287,33 @@ elif mode == "Batch Upload":
 # HISTORY MODE
 # ════════════════════════════════════════════════════════════
 elif mode == "History":
+    from persistence import is_db_connected
     st.markdown("### Previously Scored Sites")
+
+    if is_db_connected():
+        st.markdown(
+            "<div style='display:inline-flex;align-items:center;"
+            "gap:6px;background:#0d1f1a;border:1px solid #1D9E75;"
+            "padding:4px 12px;border-radius:20px;font-size:11px;"
+            "color:#9ecfc0;margin-bottom:12px'>"
+            "<span style='width:6px;height:6px;background:#1D9E75;"
+            "border-radius:50%;display:inline-block'></span>"
+            "Connected to database — history is permanent"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            "<div style='display:inline-flex;align-items:center;"
+            "gap:6px;background:#1a1a0e;border:1px solid #BA7517;"
+            "padding:4px 12px;border-radius:20px;font-size:11px;"
+            "color:#BA7517;margin-bottom:12px'>"
+            "<span style='width:6px;height:6px;background:#BA7517;"
+            "border-radius:50%;display:inline-block'></span>"
+            "Using local storage — add Supabase for permanent history"
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
     history = load_history()
 
@@ -1425,9 +1451,24 @@ elif mode == "History":
                                 unsafe_allow_html=True,
                             )
 
+                    # Notes
+                    from persistence import update_notes
+                    current_notes = entry.get("notes", "")
+                    record_id     = entry.get("id", "")
+                    if record_id:
+                        new_notes = st.text_input(
+                            "Notes",
+                            value=current_notes,
+                            placeholder="Add notes about this site...",
+                            key=f"notes_{record_id}",
+                        )
+                        if new_notes != current_notes:
+                            update_notes(record_id, new_notes)
+
                     # Re-score button
                     if st.button(
-                        "Re-score this site", key=f"rescore_{entry['address'][:20]}"
+                        "Re-score this site",
+                        key=f"rescore_{entry['address'][:20]}"
                     ):
                         st.session_state.result = None
                         st.info(
