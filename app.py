@@ -24,7 +24,8 @@ render_header()
 # ── Mode selector ─────────────────────────────────────────
 mode = st.radio(
     "Mode",
-    ["Single Site", "Compare N Sites", "Batch Upload", "History"],
+    ["Dashboard", "Single Site", "Compare N Sites",
+     "Batch Upload", "History"],
     horizontal=True,
     label_visibility="collapsed",
 )
@@ -36,6 +37,8 @@ if "compared" not in st.session_state:
     st.session_state.compared = None
 if "search_address" not in st.session_state:
     st.session_state.search_address = ""
+if "batch_results" not in st.session_state:
+    st.session_state.batch_results = None
 if "batch_results" not in st.session_state:
     st.session_state.batch_results = None
 
@@ -60,9 +63,16 @@ if st.session_state.compared is not None:
             st.session_state.compared = None
 
 # ════════════════════════════════════════════════════════════
+# DASHBOARD MODE
+# ════════════════════════════════════════════════════════════
+if mode == "Dashboard":
+    from dashboard import render_dashboard
+    render_dashboard()
+
+# ════════════════════════════════════════════════════════════
 # SINGLE SITE MODE
 # ════════════════════════════════════════════════════════════
-if mode == "Single Site":
+elif mode == "Single Site":
 
     try:
         GKEY = st.secrets.get("GOOGLE_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
