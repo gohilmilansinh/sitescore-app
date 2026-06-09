@@ -344,6 +344,79 @@ def render_score_breakdown(result: Dict[str, Any], brand_type: str) -> None:
                 unsafe_allow_html=True,
             )
 
+    # ── Nearby Competitors ────────────────────────────────
+    if result.get("competitor_details"):
+        st.markdown("### Nearby Competitors")
+        competitors = sorted(
+            result["competitor_details"],
+            key=lambda x: x.get("strength", 0),
+            reverse=True,
+        )[:8]
+
+        col_left, col_comp, col_right = st.columns([1, 10, 1])
+        with col_comp:
+            for comp in competitors:
+                strength   = comp.get("strength", 0)
+                dist_m     = comp.get("distance_m", 0)
+                bar_col    = (
+                    "#C0392B" if strength > 0.6
+                    else "#BA7517" if strength > 0.3
+                    else "#1D9E75"
+                )
+                bar_w      = int(min(strength * 100, 100))
+                stars      = (
+                    "★" * int(round(comp.get("rating", 0))) +
+                    "☆" * (5 - int(round(comp.get("rating", 0))))
+                )
+                rev_label  = (
+                    f"{comp.get('reviews', 0):,} reviews"
+                    if comp.get("reviews", 0) > 0
+                    else "No reviews"
+                )
+                label_text = (
+                    "Strong" if strength > 0.6
+                    else "Moderate" if strength > 0.3
+                    else "Weak"
+                )
+                dist_label = (
+                    f"{dist_m}m away"
+                    if dist_m > 0 else ""
+                )
+                dist_color = (
+                    "#C0392B" if dist_m <= 100
+                    else "#BA7517" if dist_m <= 250
+                    else "#888"
+                )
+
+                st.markdown(
+                    f"<div style='background:#111;border:1px solid #222;"
+                    f"border-radius:8px;padding:10px 14px;"
+                    f"margin-bottom:6px'>"
+                    f"<div style='display:flex;justify-content:"
+                    f"space-between;align-items:center;margin-bottom:6px'>"
+                    f"<div>"
+                    f"<span style='font-size:13px;font-weight:600;"
+                    f"color:white'>{comp['name']}</span>"
+                    f"<span style='font-size:11px;color:{dist_color};"
+                    f"margin-left:10px'>{dist_label}</span>"
+                    f"</div>"
+                    f"<span style='font-size:11px;color:#888'>"
+                    f"{stars} &nbsp;{rev_label}</span>"
+                    f"</div>"
+                    f"<div style='display:flex;align-items:center;"
+                    f"gap:10px'>"
+                    f"<div style='flex:1;background:#333;"
+                    f"border-radius:4px;height:6px'>"
+                    f"<div style='width:{bar_w}%;background:{bar_col};"
+                    f"height:6px;border-radius:4px'></div></div>"
+                    f"<span style='font-size:11px;color:{bar_col};"
+                    f"min-width:100px;text-align:right'>"
+                    f"{label_text} competitor</span>"
+                    f"</div></div>",
+                    unsafe_allow_html=True,
+                )
+
+
     # Risk assessment below
     st.markdown("### Risk Assessment")
     risks = []

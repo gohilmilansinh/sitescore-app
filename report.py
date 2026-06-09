@@ -433,30 +433,41 @@ def generate_report(result: dict, output_path: str = "siteiq_report.pdf") -> str
         box(LM, y - 4, CW, 18, fill=C_DARK, r=3)
         txt(LM + 6,       y + 4, "Competitor",
             size=8, bold=True, color=C_WHITE)
-        txt(LM + CW*0.50, y + 4, "Reviews",
+        txt(LM + CW*0.42, y + 4, "Distance",
             size=8, bold=True, color=C_WHITE)
-        txt(LM + CW*0.65, y + 4, "Rating",
+        txt(LM + CW*0.55, y + 4, "Reviews",
             size=8, bold=True, color=C_WHITE)
-        txt(LM + CW*0.80, y + 4, "Strength",
+        txt(LM + CW*0.68, y + 4, "Rating",
+            size=8, bold=True, color=C_WHITE)
+        txt(LM + CW*0.80, y + 4, "Pressure",
             size=8, bold=True, color=C_WHITE)
         y -= 22
 
         for i, comp in enumerate(top_comps):
             row_fill = C_LGREY if i % 2 == 0 else C_WHITE
             box(LM, y - 4, CW, 16, fill=row_fill, r=0)
-            strength = comp.get("strength", 0)
-            s_col = (C_RED if strength > 0.6
-                     else C_AMBER if strength > 0.3 else C_GREEN)
-            s_lbl = ("Strong" if strength > 0.6
-                     else "Moderate" if strength > 0.3 else "Weak")
-            name = comp.get("name", "")[:28]
+            strength  = comp.get("strength", 0)
+            dist_m    = comp.get("distance_m", 0)
+            s_col     = (C_RED if strength > 0.6
+                         else C_AMBER if strength > 0.3 else C_GREEN)
+            s_lbl     = ("Strong" if strength > 0.6
+                         else "Moderate" if strength > 0.3 else "Weak")
+            name      = comp.get("name", "")[:24]
+            dist_str  = f"{dist_m}m" if dist_m > 0 else "N/A"
+            dist_col  = (C_RED if dist_m <= 100
+                         else C_AMBER if dist_m <= 250 else C_GREY)
+
             txt(LM + 6,       y + 4, name, size=8, color=C_DARK)
-            txt(LM + CW*0.50, y + 4,
-                f"{comp.get('reviews', 0):,}", size=8, color=C_GREY)
-            txt(LM + CW*0.65, y + 4,
-                str(comp.get("rating", 0)), size=8, color=C_GREY)
-            txt(LM + CW*0.80, y + 4, s_lbl, size=8,
-                bold=True, color=s_col)
+            txt(LM + CW*0.42, y + 4, dist_str,
+                size=8, bold=True, color=dist_col)
+            txt(LM + CW*0.55, y + 4,
+                f"{comp.get('reviews', 0):,}",
+                size=8, color=C_GREY)
+            txt(LM + CW*0.68, y + 4,
+                str(comp.get("rating", 0)),
+                size=8, color=C_GREY)
+            txt(LM + CW*0.80, y + 4, s_lbl,
+                size=8, bold=True, color=s_col)
             y -= 18
 
     y -= 10

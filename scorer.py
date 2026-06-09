@@ -187,29 +187,60 @@ def score_competition(
 
     import math
 
-    weighted_pressure = 0.0
+    weighted_pressure  = 0.0
     competitor_details: List[Dict[str, Any]] = []
 
     for place in places:
         review_count = place.get("user_ratings_total", 0)
-        rating = place.get("rating", 3.0)
-        name = place.get("name", "Unknown")
+        rating       = place.get("rating", 3.0)
+        name         = place.get("name", "Unknown")
 
+        # ── Review + rating strength ──────────────────────
         review_weight = (
-            min(math.log10(review_count) / 3.0, 1.0) if review_count > 0 else 0.05
+            min(math.log10(review_count) / 3.0, 1.0)
+            if review_count > 0 else 0.05
         )
         rating_weight = rating / 5.0
-        strength = review_weight * 0.7 + rating_weight * 0.3
+        brand_strength = review_weight * 0.7 + rating_weight * 0.3
 
-        weighted_pressure += strength
-        competitor_details.append(
-            {
-                "name": name,
-                "reviews": review_count,
-                "rating": rating,
-                "strength": round(strength, 2),
-            }
-        )
+        # ── Distance weighting ────────────────────────────
+        location = place.get("geometry", {}).get("location", {})
+        place_lat = location.get("lat", lat)
+        place_lng = location.get("lng", lng)
+
+        # Haversine distance in metres
+        R     = 6371000  # Earth radius in metres
+        dlat  = math.radians(place_lat - lat)
+        dlng  = math.radians(place_lng - lng)
+        a     = (math.sin(dlat / 2) ** 2 +
+                 math.cos(math.radians(lat)) *
+                 math.cos(math.radians(place_lat)) *
+                 math.sin(dlng / 2) ** 2)
+        distance_m = R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+        # Distance decay multiplier
+        if distance_m <= 100:
+            distance_weight = 1.0
+        elif distance_m <= 250:
+            distance_weight = 0.7
+        elif distance_m <= 400:
+            distance_weight = 0.4
+        else:
+            distance_weight = 0.2
+
+        # Combined competitor pressure
+        pressure = brand_strength * distance_weight
+        weighted_pressure += pressure
+
+        competitor_details.append({
+            "name":            name,
+            "reviews":         review_count,
+            "rating":          rating,
+            "distance_m":      round(distance_m),
+            "brand_strength":  round(brand_strength, 2),
+            "distance_weight": distance_weight,
+            "strength":        round(pressure, 2),
+        })
 
     score = max(100.0 - (weighted_pressure / 10 * 100), 0.0)
     return round(score, 1), competitor_details
