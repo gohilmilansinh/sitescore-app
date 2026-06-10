@@ -116,22 +116,24 @@ def render_dashboard() -> None:
         )
         fig_dist.update_layout(
             height=260,
-            plot_bgcolor="#0d1f1a",
-            paper_bgcolor="transparent",
+            paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=10, t=10, b=40),
+            showlegend=False,
             xaxis=dict(
                 title="Score",
                 range=[0, 100],
                 gridcolor="#1a3a2a",
-                color="#9ecfc0",
+                tickfont=dict(color="#9ecfc0"),
+                titlefont=dict(color="#9ecfc0"),
             ),
             yaxis=dict(
                 title="Sites",
                 gridcolor="#1a3a2a",
-                color="#9ecfc0",
+                tickfont=dict(color="#9ecfc0"),
+                titlefont=dict(color="#9ecfc0"),
             ),
-            margin=dict(l=10, r=10, t=10, b=40),
-            showlegend=False,
         )
+        fig_dist.update_traces(marker_color="#1D9E75")
         st.plotly_chart(fig_dist, use_container_width=True)
 
     with col_radar:
