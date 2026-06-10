@@ -151,20 +151,15 @@ def render_dashboard() -> None:
         ))
         fig_radar.update_layout(
             polar=dict(
-                bgcolor="#0d1f1a",
                 radialaxis=dict(
                     visible=True,
                     range=[0, 100],
-                    tickfont=dict(size=8, color="#666"),
-                    gridcolor="#1a3a2a",
                 ),
-                angularaxis=dict(
-                    tickfont=dict(size=10, color="#9ecfc0")),
             ),
             showlegend=False,
             height=260,
             margin=dict(l=30, r=30, t=20, b=20),
-            paper_bgcolor="transparent",
+            paper_bgcolor="rgba(0,0,0,0)",
         )
         st.plotly_chart(fig_radar, use_container_width=True)
 
